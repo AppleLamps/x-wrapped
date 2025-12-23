@@ -529,17 +529,19 @@ export default function WrappedDisplay({ data, username }: WrappedDisplayProps) 
         ))}
       </div>
 
-      {/* Navigation Controls */}
-      <div className="absolute inset-0 flex z-40 pointer-events-none">
-        <div 
-          className="w-1/3 h-full pointer-events-auto cursor-pointer hover:bg-white/5 transition-colors"
-          onClick={prevSlide}
-        />
-        <div 
-          className="w-2/3 h-full pointer-events-auto cursor-pointer hover:bg-white/5 transition-colors"
-          onClick={nextSlide}
-        />
-      </div>
+      {/* Navigation Controls - only show when not on outro slide */}
+      {slides[currentSlide] !== 'outro' && (
+        <div className="absolute inset-0 flex z-40 pointer-events-none">
+          <div 
+            className="w-1/3 h-full pointer-events-auto cursor-pointer hover:bg-white/5 transition-colors"
+            onClick={prevSlide}
+          />
+          <div 
+            className="w-2/3 h-full pointer-events-auto cursor-pointer hover:bg-white/5 transition-colors"
+            onClick={nextSlide}
+          />
+        </div>
+      )}
 
       {/* Main Content */}
       <AnimatePresence mode="wait" initial={false} custom={direction}>
