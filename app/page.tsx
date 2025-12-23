@@ -6,46 +6,73 @@ import { Loader2, TrendingUp, Heart, Sparkles, ChevronRight, BarChart3, MessageC
 import WrappedDisplay from '@/components/WrappedDisplay'
 import ProgressIndicator from '@/components/ProgressIndicator'
 
+// =============================================================================
+// TYPE DEFINITIONS (matching new content-focused backend schema)
+// =============================================================================
+
+interface PersonalityArchetype {
+  archetype: string
+  description: string
+  traits: string[]
+  spirit_emoji: string
+}
+
+interface VibeAnalysis {
+  positive_percentage: number
+  neutral_percentage: number
+  negative_percentage: number
+  overall_vibe: string
+  vibe_description: string
+}
+
+interface ThemeData {
+  theme: string
+  weight: number
+  sample_context: string
+}
+
+interface VoiceAnalysis {
+  style_summary: string
+  vocabulary_level: string
+  tone: string
+  signature_phrases: string[]
+  emoji_style: string
+  post_length_style: string
+}
+
+interface ContentMixCategory {
+  category: string
+  percentage: number
+}
+
+interface ContentMix {
+  categories: ContentMixCategory[]
+  primary_mode: string
+  engagement_style: string
+}
+
+interface HighlightMoment {
+  title: string
+  description: string
+  post_snippet: string
+  time_period: string
+}
+
+interface GreatestHit {
+  content: string
+  category: string
+  context: string
+}
+
 interface WrappedData {
-  overview?: {
-    total_posts?: number
-    best_month?: string
-    best_month_engagement?: number
-    average_engagement?: number
-    peak_posting_times?: string[]
-  }
-  sentiment?: {
-    positive_percentage?: number
-    neutral_percentage?: number
-    negative_percentage?: number
-    most_emotional_month?: string
-    sentiment_trend?: string
-  }
-  top_topics?: Array<{
-    topic: string
-    frequency: number
-    engagement: number
-  }>
-  writing_style?: string
-  monthly_highlights?: Array<{
-    month: string
-    key_moments: string[]
-    top_post: string
-    engagement: number
-  }>
-  year_summary?: string
-  interesting_posts?: Array<{
-    content: string
-    engagement: number
-    reason: string
-  }>
-  engagement_metrics?: {
-    total_likes?: number
-    total_retweets?: number
-    total_replies?: number
-    best_category?: string
-    interaction_patterns?: string
-  }
+  personality?: PersonalityArchetype
+  vibe?: VibeAnalysis
+  themes?: ThemeData[]
+  voice?: VoiceAnalysis
+  content_mix?: ContentMix
+  highlights?: HighlightMoment[]
+  greatest_hits?: GreatestHit[]
+  year_story?: string
 }
 
 // Floating icon component for background ambience
@@ -256,7 +283,7 @@ export default function Home() {
                     transition={{ delay: 0.3 }}
                     className="text-xl text-gray-400 max-w-md"
                   >
-                    Discover your 2025 X story. Detailed analytics, sentiment trends, and your best moments—generated in seconds.
+                    Discover your 2025 X personality. Your voice, your vibe, your greatest hits—all analyzed by Grok AI.
                   </motion.p>
                 </div>
 
