@@ -1,6 +1,12 @@
 {
+  "rewrites": [
+    {
+      "source": "/api/wrapped/stream",
+      "destination": "/api"
+    }
+  ],
   "functions": {
-    "api/wrapped/stream.py": {
+    "api/index.py": {
       "runtime": "python3.12",
       "maxDuration": 300
     }

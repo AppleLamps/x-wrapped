@@ -2,20 +2,7 @@ import os
 import json
 import re
 from datetime import datetime
-from fastapi import FastAPI, Request
-from fastapi.responses import StreamingResponse
-from fastapi.middleware.cors import CORSMiddleware
-
-app = FastAPI()
-
-# Enable CORS
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=["*"],
-    allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
-)
+from http.server import BaseHTTPRequestHandler
 
 
 # Fun, engaging messages for each tool call
@@ -163,32 +150,61 @@ After gathering all data, provide your analysis in structured form. Note the mon
         yield f"data: {json.dumps({'type': 'error', 'error': str(e)})}\n\n"
 
 
-@app.post("/")
-@app.post("/api/wrapped/stream")
-async def handler(request: Request):
-    """Handle POST requests for streaming wrapped generation."""
-    try:
-        data = await request.json()
-        username = data.get("username", "").replace("@", "")
-        
-        if not username:
-            return {"error": "Username is required"}, 400
-        
-        return StreamingResponse(
-            generate_wrapped_streaming(username),
-            media_type="text/event-stream",
-            headers={
-                "Cache-Control": "no-cache",
-                "Connection": "keep-alive",
-                "X-Accel-Buffering": "no",
-            }
-        )
-    except Exception as e:
-        return {"error": str(e)}, 500
+class handler(BaseHTTPRequestHandler):
+    """Vercel Python serverless function handler."""
+    
+    def do_POST(self):
+        """Handle POST requests for streaming wrapped generation."""
+        try:
+            # Read request body
+            content_length = int(self.headers.get('Content-Length', 0))
+            body = self.rfile.read(content_length)
+            data = json.loads(body) if body else {}
+            
+            username = data.get("username", "").replace("@", "")
+            
+            if not username:
+                self.send_response(400)
+                self.send_header('Content-Type', 'application/json')
+                self.send_header('Access-Control-Allow-Origin', '*')
+                self.end_headers()
+                self.wfile.write(json.dumps({"error": "Username is required"}).encode())
+                return
+            
+            # Set up SSE response headers
+            self.send_response(200)
+            self.send_header('Content-Type', 'text/event-stream')
+            self.send_header('Cache-Control', 'no-cache')
+            self.send_header('Connection', 'keep-alive')
+            self.send_header('X-Accel-Buffering', 'no')
+            self.send_header('Access-Control-Allow-Origin', '*')
+            self.end_headers()
+            
+            # Stream the response
+            for chunk in generate_wrapped_streaming(username):
+                self.wfile.write(chunk.encode())
+                self.wfile.flush()
+                
+        except Exception as e:
+            self.send_response(500)
+            self.send_header('Content-Type', 'application/json')
+            self.send_header('Access-Control-Allow-Origin', '*')
+            self.end_headers()
+            self.wfile.write(json.dumps({"error": str(e)}).encode())
+    
+    def do_OPTIONS(self):
+        """Handle CORS preflight requests."""
+        self.send_response(200)
+        self.send_header('Access-Control-Allow-Origin', '*')
+        self.send_header('Access-Control-Allow-Methods', 'POST, OPTIONS')
+        self.send_header('Access-Control-Allow-Headers', 'Content-Type')
+        self.end_headers()
+    
+    def do_GET(self):
+        """Handle GET requests with a simple health check."""
+        self.send_response(200)
+        self.send_header('Content-Type', 'application/json')
+        self.send_header('Access-Control-Allow-Origin', '*')
+        self.end_headers()
+        self.wfile.write(json.dumps({"status": "ok", "message": "X Wrapped API - Use POST to generate wrapped"}).encode())
 
-
-# For local development
-if __name__ == "__main__":
-    import uvicorn
-    print("🚀 Starting FastAPI server on http://localhost:5328")
-    uvicorn.run(app, host="0.0.0.0", port=5328)
