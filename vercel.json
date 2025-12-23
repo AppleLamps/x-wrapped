@@ -2,7 +2,7 @@
   "rewrites": [
     {
       "source": "/api/wrapped/stream",
-      "destination": "/api"
+      "destination": "/api/index"
     }
   ],
   "functions": {
