@@ -1,7 +1,8 @@
 'use client'
 
+import { useState, useEffect } from 'react'
 import { motion } from 'framer-motion'
-import { Calendar, Loader2 } from 'lucide-react'
+import { Loader2 } from 'lucide-react'
 
 interface ProgressIndicatorProps {
   progress: {
@@ -13,19 +14,55 @@ interface ProgressIndicatorProps {
 }
 
 export default function ProgressIndicator({ progress }: ProgressIndicatorProps) {
+  const [elapsedTime, setElapsedTime] = useState(0)
+  const [dots, setDots] = useState('')
   const percentage = (progress.step / progress.total) * 100
+
+  // Timer to show elapsed time
+  useEffect(() => {
+    const timer = setInterval(() => {
+      setElapsedTime(prev => prev + 1)
+    }, 1000)
+    return () => clearInterval(timer)
+  }, [])
+
+  // Animated dots to show activity
+  useEffect(() => {
+    const timer = setInterval(() => {
+      setDots(prev => prev.length >= 3 ? '' : prev + '.')
+    }, 500)
+    return () => clearInterval(timer)
+  }, [])
+
+  const formatTime = (seconds: number) => {
+    const mins = Math.floor(seconds / 60)
+    const secs = seconds % 60
+    return mins > 0 ? `${mins}m ${secs}s` : `${secs}s`
+  }
 
   return (
     <div className="glass-effect rounded-2xl p-6">
       <div className="flex items-center gap-4 mb-4">
         <div className="relative">
           <Loader2 className="animate-spin text-orange-500" size={24} />
+          {/* Pulse effect to show activity */}
+          <motion.div
+            className="absolute inset-0 rounded-full bg-orange-500/20"
+            animate={{ scale: [1, 1.5, 1], opacity: [0.5, 0, 0.5] }}
+            transition={{ duration: 2, repeat: Infinity }}
+          />
         </div>
         <div className="flex-1">
-          <p className="text-white font-medium">{progress.message}</p>
-          {progress.month && (
-            <p className="text-gray-400 text-sm mt-1">Analyzing {progress.month}...</p>
-          )}
+          <p className="text-white font-medium">
+            {progress.message || 'Processing'}{dots}
+          </p>
+          <p className="text-gray-500 text-xs mt-1">
+            Grok is analyzing posts - this may take 1-2 minutes
+          </p>
+        </div>
+        <div className="text-right">
+          <p className="text-orange-400 text-sm font-mono">{formatTime(elapsedTime)}</p>
+          <p className="text-gray-500 text-xs">elapsed</p>
         </div>
       </div>
       
@@ -35,6 +72,12 @@ export default function ProgressIndicator({ progress }: ProgressIndicatorProps) 
           initial={{ width: 0 }}
           animate={{ width: `${percentage}%` }}
           transition={{ duration: 0.3, ease: 'easeOut' }}
+        />
+        {/* Shimmer effect to show activity */}
+        <motion.div
+          className="absolute inset-y-0 w-20 bg-gradient-to-r from-transparent via-white/20 to-transparent"
+          animate={{ x: ['-100%', '500%'] }}
+          transition={{ duration: 2, repeat: Infinity, ease: 'linear' }}
         />
       </div>
       
@@ -49,4 +92,3 @@ export default function ProgressIndicator({ progress }: ProgressIndicatorProps) 
     </div>
   )
 }
-

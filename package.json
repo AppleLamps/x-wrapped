@@ -3,10 +3,12 @@
   "version": "1.0.0",
   "private": true,
   "scripts": {
-    "dev": "next dev",
+    "dev": "node scripts/dev.js",
+    "next-dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "next lint"
+    "lint": "next lint",
+    "api": "python api/index.py"
   },
   "dependencies": {
     "next": "^14.2.0",
@@ -26,4 +28,3 @@
     "typescript": "^5.3.3"
   }
 }
-

@@ -1,8 +1,14 @@
 import os
+import sys
 import json
 import re
 from datetime import datetime
 from http.server import BaseHTTPRequestHandler
+
+# Fix Windows console encoding for emoji support
+if sys.platform == 'win32':
+    sys.stdout.reconfigure(encoding='utf-8', errors='replace')
+    sys.stderr.reconfigure(encoding='utf-8', errors='replace')
 
 
 # Fun, engaging messages for each tool call
@@ -120,23 +126,31 @@ After gathering all data, provide your analysis in structured form. Note the mon
         final_response = chat.sample()
         full_analysis_text = "".join(analysis_content) + (final_response.content if final_response else "")
         
+        # Convert citations to a serializable format (it's a protobuf RepeatedScalarContainer)
+        citations = []
+        if final_response and hasattr(final_response, 'citations'):
+            try:
+                citations = list(final_response.citations) if final_response.citations else []
+            except Exception:
+                citations = []
+        
         # Extract JSON from the response (might be wrapped in markdown)
         json_match = re.search(r'\{[\s\S]*\}', full_analysis_text)
         if json_match:
             try:
                 wrapped_data = json.loads(json_match.group())
-                wrapped_data["citations"] = final_response.citations if final_response else []
+                wrapped_data["citations"] = citations
                 yield f"data: {json.dumps({'type': 'complete', 'data': wrapped_data})}\n\n"
             except json.JSONDecodeError:
                 wrapped_data = {
                     "year_summary": full_analysis_text,
-                    "citations": final_response.citations if final_response else []
+                    "citations": citations
                 }
                 yield f"data: {json.dumps({'type': 'complete', 'data': wrapped_data})}\n\n"
         else:
             wrapped_data = {
                 "year_summary": full_analysis_text,
-                "citations": final_response.citations if final_response else []
+                "citations": citations
             }
             yield f"data: {json.dumps({'type': 'complete', 'data': wrapped_data})}\n\n"
     
@@ -207,4 +221,88 @@ class handler(BaseHTTPRequestHandler):
         self.send_header('Access-Control-Allow-Origin', '*')
         self.end_headers()
         self.wfile.write(json.dumps({"status": "ok", "message": "X Wrapped API - Use POST to generate wrapped"}).encode())
+
+
+# =============================================================================
+# LOCAL DEVELOPMENT SERVER (Flask)
+# =============================================================================
+if __name__ == "__main__":
+    import signal
+    import atexit
+    from flask import Flask, Response, request, jsonify
+    from flask_cors import CORS
+    
+    flask_app = Flask(__name__)
+    CORS(flask_app)
+    
+    # Track if we're shutting down
+    shutting_down = False
+    
+    def graceful_shutdown(signum=None, frame=None):
+        """Handle graceful shutdown on signals."""
+        global shutting_down
+        if shutting_down:
+            return
+        shutting_down = True
+        print("\n🛑 Shutting down Flask server...")
+        sys.exit(0)
+    
+    def cleanup():
+        """Cleanup function called on exit."""
+        print("🧹 Cleanup complete.")
+    
+    # Register signal handlers for graceful shutdown
+    signal.signal(signal.SIGINT, graceful_shutdown)   # Ctrl+C
+    signal.signal(signal.SIGTERM, graceful_shutdown)  # kill command
+    
+    # Register cleanup function
+    atexit.register(cleanup)
+
+    @flask_app.route("/api/wrapped/stream", methods=["POST"])
+    def stream_handler():
+        """Handle POST requests for streaming wrapped generation."""
+        try:
+            data = request.get_json()
+            username = data.get("username", "").replace("@", "") if data else ""
+            
+            if not username:
+                return jsonify({"error": "Username is required"}), 400
+            
+            return Response(
+                generate_wrapped_streaming(username),
+                mimetype="text/event-stream",
+                headers={
+                    "Cache-Control": "no-cache",
+                    "Connection": "keep-alive",
+                    "X-Accel-Buffering": "no",
+                }
+            )
+        except Exception as e:
+            return jsonify({"error": str(e)}), 500
+    
+    @flask_app.route("/api/wrapped/stream", methods=["OPTIONS"])
+    def options_handler():
+        """Handle CORS preflight requests."""
+        return "", 200
+    
+    @flask_app.route("/api", methods=["GET"])
+    @flask_app.route("/api/wrapped/stream", methods=["GET"])
+    def health_check():
+        """Health check endpoint."""
+        return jsonify({"status": "ok", "message": "X Wrapped API - Use POST to generate wrapped"})
+
+    try:
+        print("🚀 Starting Flask server on http://localhost:5328")
+        print("   Press Ctrl+C to stop\n")
+        flask_app.run(
+            debug=False,  # Disable debug to prevent double-loading
+            port=5328,
+            use_reloader=False,  # Disable reloader for cleaner shutdown
+            threaded=True,
+        )
+    except KeyboardInterrupt:
+        graceful_shutdown()
+    except Exception as e:
+        print(f"❌ Server error: {e}")
+        sys.exit(1)
 
