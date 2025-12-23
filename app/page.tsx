@@ -73,7 +73,7 @@ const FloatingIcon = ({ icon: Icon, delay, x, y, color }: any) => (
 export default function Home() {
   const [username, setUsername] = useState('')
   const [loading, setLoading] = useState(false)
-  const [progress, setProgress] = useState({ step: 0, total: 13, message: '', month: '' })
+  const [progress, setProgress] = useState({ step: 0, total: 2, message: '', month: '' })
   const [wrappedData, setWrappedData] = useState<WrappedData | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [analysisChunks, setAnalysisChunks] = useState<string[]>([])
@@ -93,11 +93,19 @@ export default function Home() {
     setError(null)
     setWrappedData(null)
     setAnalysisChunks([])
-    setProgress({ step: 0, total: 13, message: 'Starting...', month: '' })
+    setProgress({ step: 0, total: 2, message: '🚀 Initializing...', month: '' })
 
     try {
       const cleanUsername = username.replace('@', '').trim()
-      const response = await fetch('/api/wrapped', {
+      
+      // In local development, call Flask server directly
+      // In production (Vercel), use the relative path which routes to the Python function
+      const isLocalDev = typeof window !== 'undefined' && window.location.hostname === 'localhost'
+      const apiUrl = isLocalDev 
+        ? 'http://localhost:5328/api/wrapped/stream'
+        : '/api/wrapped/stream'
+      
+      const response = await fetch(apiUrl, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -133,8 +141,8 @@ export default function Home() {
               
               if (data.type === 'progress') {
                 setProgress({
-                  step: data.step || 0,
-                  total: data.total || 13,
+                  step: data.step ?? 0,
+                  total: data.total ?? 2,
                   message: data.message || '',
                   month: data.month || ''
                 })
@@ -143,6 +151,8 @@ export default function Home() {
               } else if (data.type === 'complete') {
                 setWrappedData(data.data)
                 setLoading(false)
+              } else if (data.type === 'error') {
+                throw new Error(data.error || 'An error occurred during analysis')
               }
             } catch (e) {
               console.error('Error parsing stream data:', e)

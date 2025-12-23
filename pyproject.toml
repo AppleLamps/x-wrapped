@@ -1,0 +1,11 @@
+[project]
+name = "x-wrapped"
+version = "0.1.0"
+description = "X (Twitter) Wrapped - Year in Review Generator"
+requires-python = ">=3.11"
+dependencies = [
+    "xai-sdk>=1.3.1",
+    "flask>=3.0.0",
+    "flask-cors>=4.0.0",
+]
+

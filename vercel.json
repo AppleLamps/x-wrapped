@@ -1,11 +1,4 @@
 {
-  "functions": {
-    "api/wrapped/stream.py": {
-      "runtime": "python3.11",
-      "memory": 3008,
-      "maxDuration": 300
-    }
-  },
   "rewrites": [
     {
       "source": "/api/wrapped/stream",
