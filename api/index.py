@@ -4,11 +4,74 @@ import json
 import re
 from datetime import datetime
 from http.server import BaseHTTPRequestHandler
+from typing import List, Optional
+from enum import Enum
+
+from pydantic import BaseModel, Field
 
 # Fix Windows console encoding for emoji support
 if sys.platform == 'win32':
     sys.stdout.reconfigure(encoding='utf-8', errors='replace')
     sys.stderr.reconfigure(encoding='utf-8', errors='replace')
+
+
+# =============================================================================
+# PYDANTIC SCHEMAS FOR STRUCTURED OUTPUT
+# =============================================================================
+
+class OverviewData(BaseModel):
+    total_posts: int = Field(description="Total number of posts in the year", default=0)
+    best_month: str = Field(description="Month with highest engagement", default="Unknown")
+    best_month_engagement: int = Field(description="Total engagement in best month", default=0)
+    average_engagement: int = Field(description="Average engagement per post", default=0)
+    peak_posting_times: List[str] = Field(description="Most common posting times", default_factory=list)
+
+
+class SentimentData(BaseModel):
+    positive_percentage: int = Field(description="Percentage of positive posts (0-100)", ge=0, le=100, default=33)
+    neutral_percentage: int = Field(description="Percentage of neutral posts (0-100)", ge=0, le=100, default=34)
+    negative_percentage: int = Field(description="Percentage of negative posts (0-100)", ge=0, le=100, default=33)
+    most_emotional_month: str = Field(description="Month with strongest emotions", default="Unknown")
+    sentiment_trend: str = Field(description="Description of how sentiment changed over the year", default="Unable to determine sentiment trend.")
+
+
+class TopicData(BaseModel):
+    topic: str = Field(description="Name of the topic or theme")
+    frequency: int = Field(description="Number of posts about this topic", default=0)
+    engagement: int = Field(description="Total engagement for posts about this topic", default=0)
+
+
+class MonthlyHighlight(BaseModel):
+    month: str = Field(description="Month name")
+    key_moments: List[str] = Field(description="Notable moments or events from this month", default_factory=list)
+    top_post: str = Field(description="Best performing post snippet from this month", default="")
+    engagement: int = Field(description="Total engagement for the month", default=0)
+
+
+class InterestingPost(BaseModel):
+    content: str = Field(description="The post text or snippet")
+    engagement: int = Field(description="Total engagement (likes + retweets + replies)", default=0)
+    reason: str = Field(description="Why this post stood out", default="")
+
+
+class EngagementMetrics(BaseModel):
+    total_likes: int = Field(description="Total likes received", default=0)
+    total_retweets: int = Field(description="Total retweets received", default=0)
+    total_replies: int = Field(description="Total replies received", default=0)
+    best_category: str = Field(description="What type of content performed best", default="Unknown")
+    interaction_patterns: str = Field(description="Description of how they interact with others", default="")
+
+
+class WrappedResponse(BaseModel):
+    """Complete wrapped data for a user's year on X"""
+    overview: OverviewData = Field(description="Overview statistics")
+    sentiment: SentimentData = Field(description="Sentiment analysis results")
+    top_topics: List[TopicData] = Field(description="Top topics/themes discussed", default_factory=list)
+    writing_style: str = Field(description="2-3 sentence description of their unique writing voice and style", default="Unable to analyze writing style.")
+    monthly_highlights: List[MonthlyHighlight] = Field(description="Highlights for each month", default_factory=list)
+    year_summary: str = Field(description="3-5 sentence narrative summary of their year on X", default="Unable to generate summary.")
+    interesting_posts: List[InterestingPost] = Field(description="Most interesting/viral posts", default_factory=list)
+    engagement_metrics: EngagementMetrics = Field(description="Engagement statistics")
 
 
 # Fun, engaging messages for each tool call
@@ -69,9 +132,9 @@ def get_tool_message(tool_name: str) -> str:
 
 
 def generate_wrapped_streaming(username: str):
-    """Generate a detailed wrapped report for a user using agentic tool calling"""
+    """Generate a detailed wrapped report for a user using agentic tool calling + structured output"""
     from xai_sdk import Client
-    from xai_sdk.chat import user
+    from xai_sdk.chat import user, assistant
     from xai_sdk.tools import x_search, code_execution
     
     try:
@@ -84,75 +147,125 @@ def generate_wrapped_streaming(username: str):
         current_year = datetime.now().year
         
         # Progress update
-        yield f"data: {json.dumps({'type': 'progress', 'message': f'🚀 Firing up Grok for @{username}...', 'step': 0, 'total': 2})}\n\n"
+        yield f"data: {json.dumps({'type': 'progress', 'message': f'🚀 Firing up Grok for @{username}...', 'step': 1, 'total': 3})}\n\n"
         
-        # Single agentic request - the model handles parallel searches for all 12 months
-        chat = client.chat.create(
+        # =================================================================
+        # STEP 1: AGENTIC TOOL CALLING - Gather all data about the user
+        # (Agentic requests do NOT support structured output)
+        # =================================================================
+        agentic_chat = client.chat.create(
             model="grok-4-1-fast",
             tools=[x_search(enable_image_understanding=True), code_execution()],
         )
         
-        analysis_prompt = f"""Research and analyze @{username}'s entire X activity for {current_year}.
+        analysis_prompt = f"""Research and comprehensively analyze @{username}'s entire X (Twitter) activity for {current_year}.
 
 Your task:
 1. Search for ALL posts from @{username} throughout {current_year} (January through December)
-2. For each post found, capture: content, date, engagement metrics (likes, retweets, replies), media types (images, videos), and topics discussed
-3. Analyze sentiment, posting patterns, and trends across the year
-4. Identify: top posts, posting frequency, best month, engagement patterns, themes/topics, writing style, media engagement
+2. For each post found, note: the full content, exact date, engagement metrics (likes, retweets, replies, views if available)
+3. Identify their top topics/themes, writing style, best performing posts
+4. Calculate sentiment distribution (positive/neutral/negative)
+5. Find their most viral/interesting posts and explain why they stood out
+6. Identify their best month for engagement
+7. Note any patterns in posting times or frequency
 
-Return a comprehensive analysis with specific data points. Use x_search to gather posts from across all months, and code_execution if needed for calculations.
+Use x_search to gather posts comprehensively. Use code_execution if needed for calculations.
 
-After gathering all data, provide your analysis in structured form. Note the month names for all time-based findings."""
+Provide a detailed analysis with ALL the specific numbers, dates, post content, and insights you discover. Be thorough - include actual post snippets, exact engagement numbers, and specific observations."""
         
-        chat.append(user(analysis_prompt))
+        agentic_chat.append(user(analysis_prompt))
         
         # Reset tool call counts for this request
         tool_call_counts.clear()
         
         # Stream the agent's reasoning and tool calls
         analysis_content = []
-        for response, chunk in chat.stream():
+        for response, chunk in agentic_chat.stream():
             # Stream tool calls as progress updates
             if chunk.tool_calls:
                 for tool_call in chunk.tool_calls:
                     message = get_tool_message(tool_call.function.name)
-                    yield f"data: {json.dumps({'type': 'progress', 'message': message, 'step': 1, 'total': 2})}\n\n"
+                    yield f"data: {json.dumps({'type': 'progress', 'message': message, 'step': 1, 'total': 3})}\n\n"
             if chunk.content:
                 content = chunk.content
                 analysis_content.append(content)
                 yield f"data: {json.dumps({'type': 'analysis_chunk', 'content': content})}\n\n"
         
-        # Get final response
-        final_response = chat.sample()
-        full_analysis_text = "".join(analysis_content) + (final_response.content if final_response else "")
+        # Combine all streamed content - this is the raw analysis
+        raw_analysis = "".join(analysis_content)
         
-        # Convert citations to a serializable format (it's a protobuf RepeatedScalarContainer)
-        citations = []
-        if final_response and hasattr(final_response, 'citations'):
-            try:
-                citations = list(final_response.citations) if final_response.citations else []
-            except Exception:
-                citations = []
+        if not raw_analysis.strip():
+            yield f"data: {json.dumps({'type': 'error', 'error': 'No analysis data was generated. Please try again.'})}\n\n"
+            return
         
-        # Extract JSON from the response (might be wrapped in markdown)
-        json_match = re.search(r'\{[\s\S]*\}', full_analysis_text)
-        if json_match:
-            try:
-                wrapped_data = json.loads(json_match.group())
-                wrapped_data["citations"] = citations
-                yield f"data: {json.dumps({'type': 'complete', 'data': wrapped_data})}\n\n"
-            except json.JSONDecodeError:
-                wrapped_data = {
-                    "year_summary": full_analysis_text,
-                    "citations": citations
-                }
-                yield f"data: {json.dumps({'type': 'complete', 'data': wrapped_data})}\n\n"
-        else:
+        # =================================================================
+        # STEP 2: STRUCTURED OUTPUT - Format the raw analysis into JSON
+        # (Use a separate non-agentic chat with .parse() for guaranteed JSON)
+        # =================================================================
+        yield f"data: {json.dumps({'type': 'progress', 'message': '✨ Generating your wrapped...', 'step': 2, 'total': 3})}\n\n"
+        
+        # Create a new chat for structured output (no tools = non-agentic)
+        format_chat = client.chat.create(model="grok-3-fast")
+        
+        format_prompt = f"""Based on the following analysis of @{username}'s X activity for {current_year}, extract and structure ALL the data into the required JSON format.
+
+=== RAW ANALYSIS ===
+{raw_analysis}
+=== END ANALYSIS ===
+
+Instructions:
+- Extract ALL specific numbers, percentages, and metrics mentioned
+- Include actual post content snippets (truncated if needed)  
+- List the top 5-7 topics/themes with their frequency
+- Include monthly highlights for months that have data
+- Include at least 3 interesting/viral posts with engagement numbers
+- Calculate or estimate sentiment percentages based on the analysis
+- Describe the writing style based on observed patterns
+- Write a compelling year_summary narrative (3-5 sentences)
+
+If exact numbers aren't available, make reasonable estimates based on the context. Fill ALL fields with meaningful data."""
+
+        format_chat.append(user(format_prompt))
+        
+        # Use .parse() to get guaranteed structured JSON output
+        try:
+            response, wrapped = format_chat.parse(WrappedResponse)
+            wrapped_data = wrapped.model_dump()
+        except Exception as parse_error:
+            print(f"⚠️ Structured output parsing failed: {parse_error}")
+            # Fallback: Create a response with the raw analysis as the summary
             wrapped_data = {
-                "year_summary": full_analysis_text,
-                "citations": citations
+                "overview": {
+                    "total_posts": 0,
+                    "best_month": "Unknown",
+                    "best_month_engagement": 0,
+                    "average_engagement": 0,
+                    "peak_posting_times": []
+                },
+                "sentiment": {
+                    "positive_percentage": 33,
+                    "neutral_percentage": 34,
+                    "negative_percentage": 33,
+                    "most_emotional_month": "Unknown",
+                    "sentiment_trend": "Based on the analysis, sentiment patterns were mixed throughout the year."
+                },
+                "top_topics": [],
+                "writing_style": "Unable to fully characterize writing style.",
+                "monthly_highlights": [],
+                "year_summary": raw_analysis[:2000] if raw_analysis else f"Analysis for @{username} could not be fully structured.",
+                "interesting_posts": [],
+                "engagement_metrics": {
+                    "total_likes": 0,
+                    "total_retweets": 0,
+                    "total_replies": 0,
+                    "best_category": "Unknown",
+                    "interaction_patterns": ""
+                }
             }
-            yield f"data: {json.dumps({'type': 'complete', 'data': wrapped_data})}\n\n"
+        
+        # Progress: complete
+        yield f"data: {json.dumps({'type': 'progress', 'message': '🎉 Done!', 'step': 3, 'total': 3})}\n\n"
+        yield f"data: {json.dumps({'type': 'complete', 'data': wrapped_data})}\n\n"
     
     except GeneratorExit:
         # Client disconnected, clean up gracefully
@@ -161,6 +274,8 @@ After gathering all data, provide your analysis in structured form. Note the mon
     except Exception as e:
         # Send error to client and log it
         print(f"❌ Error generating wrapped for @{username}: {e}")
+        import traceback
+        traceback.print_exc()
         yield f"data: {json.dumps({'type': 'error', 'error': str(e)})}\n\n"
 
 

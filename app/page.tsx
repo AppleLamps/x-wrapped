@@ -73,7 +73,7 @@ const FloatingIcon = ({ icon: Icon, delay, x, y, color }: any) => (
 export default function Home() {
   const [username, setUsername] = useState('')
   const [loading, setLoading] = useState(false)
-  const [progress, setProgress] = useState({ step: 0, total: 2, message: '', month: '' })
+  const [progress, setProgress] = useState({ step: 0, total: 3, message: '', month: '' })
   const [wrappedData, setWrappedData] = useState<WrappedData | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [analysisChunks, setAnalysisChunks] = useState<string[]>([])
@@ -93,7 +93,7 @@ export default function Home() {
     setError(null)
     setWrappedData(null)
     setAnalysisChunks([])
-    setProgress({ step: 0, total: 2, message: '🚀 Initializing...', month: '' })
+    setProgress({ step: 0, total: 3, message: '🚀 Initializing...', month: '' })
 
     try {
       const cleanUsername = username.replace('@', '').trim()
@@ -125,6 +125,7 @@ export default function Home() {
       }
 
       let buffer = ''
+      let receivedComplete = false
 
       while (true) {
         const { done, value } = await reader.read()
@@ -142,23 +143,50 @@ export default function Home() {
               if (data.type === 'progress') {
                 setProgress({
                   step: data.step ?? 0,
-                  total: data.total ?? 2,
+                  total: data.total ?? 3,
                   message: data.message || '',
                   month: data.month || ''
                 })
               } else if (data.type === 'analysis_chunk') {
                 setAnalysisChunks(prev => [...prev, data.content])
               } else if (data.type === 'complete') {
+                receivedComplete = true
                 setWrappedData(data.data)
                 setLoading(false)
               } else if (data.type === 'error') {
                 throw new Error(data.error || 'An error occurred during analysis')
               }
             } catch (e) {
-              console.error('Error parsing stream data:', e)
+              // Only log parse errors, not thrown errors
+              if (!(e instanceof Error && e.message.includes('An error occurred'))) {
+                console.error('Error parsing stream data:', e, 'Line:', line)
+              } else {
+                throw e
+              }
             }
           }
         }
+      }
+      
+      // Process any remaining buffer content
+      if (buffer.trim() && buffer.startsWith('data: ')) {
+        try {
+          const data = JSON.parse(buffer.slice(6))
+          if (data.type === 'complete') {
+            receivedComplete = true
+            setWrappedData(data.data)
+            setLoading(false)
+          } else if (data.type === 'error') {
+            throw new Error(data.error || 'An error occurred during analysis')
+          }
+        } catch (e) {
+          console.error('Error parsing final buffer:', e)
+        }
+      }
+      
+      // If stream ended without complete message, show error
+      if (!receivedComplete) {
+        throw new Error('Analysis stream ended unexpectedly. Please try again.')
       }
     } catch (err: any) {
       setError(err.message || 'An error occurred')

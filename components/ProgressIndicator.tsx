@@ -57,7 +57,10 @@ export default function ProgressIndicator({ progress }: ProgressIndicatorProps) 
             {progress.message || 'Processing'}{dots}
           </p>
           <p className="text-gray-500 text-xs mt-1">
-            Grok is analyzing posts - this may take 1-2 minutes
+            {progress.step === 1 ? 'Grok is analyzing posts - this may take 1-2 minutes' :
+             progress.step === 2 ? 'Generating your personalized wrapped...' :
+             progress.step === 3 ? 'Almost done!' :
+             'Starting up...'}
           </p>
         </div>
         <div className="text-right">
