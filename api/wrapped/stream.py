@@ -1,39 +1,9 @@
 import os
-import sys
 import json
 import re
-import signal
-import atexit
 from datetime import datetime
-from flask import Flask, Response, request, jsonify
-from flask_cors import CORS
+from http.server import BaseHTTPRequestHandler
 
-from xai_sdk import Client
-from xai_sdk.chat import user
-from xai_sdk.tools import x_search, code_execution
-
-app = Flask(__name__)
-CORS(app)  # Enable CORS for local development
-
-
-# Graceful shutdown handling
-def graceful_shutdown(signum=None, frame=None):
-    """Handle graceful shutdown on signals."""
-    print("\n🛑 Shutting down gracefully...")
-    sys.exit(0)
-
-
-def cleanup():
-    """Cleanup function called on exit."""
-    print("🧹 Cleanup complete.")
-
-
-# Register signal handlers for graceful shutdown
-signal.signal(signal.SIGINT, graceful_shutdown)   # Ctrl+C
-signal.signal(signal.SIGTERM, graceful_shutdown)  # kill command
-
-# Register cleanup function
-atexit.register(cleanup)
 
 # Fun, engaging messages for each tool call
 TOOL_MESSAGES = {
@@ -94,6 +64,9 @@ def get_tool_message(tool_name: str) -> str:
 
 def generate_wrapped_streaming(username: str):
     """Generate a detailed wrapped report for a user using agentic tool calling"""
+    from xai_sdk import Client
+    from xai_sdk.chat import user
+    from xai_sdk.tools import x_search, code_execution
     
     try:
         api_key = os.getenv("XAI_API_KEY")
@@ -177,30 +150,100 @@ After gathering all data, provide your analysis in structured form. Note the mon
         yield f"data: {json.dumps({'type': 'error', 'error': str(e)})}\n\n"
 
 
-@app.route("/api/wrapped/stream", methods=["POST"])
-def handler():
-    try:
-        data = request.get_json()
-        username = data.get("username", "").replace("@", "") if data else ""
-        
-        if not username:
-            return jsonify({"error": "Username is required"}), 400
-        
-        return Response(
-            generate_wrapped_streaming(username),
-            mimetype="text/event-stream",
-            headers={
-                "Cache-Control": "no-cache",
-                "Connection": "keep-alive",
-                "X-Accel-Buffering": "no",
-            }
-        )
-    except Exception as e:
-        return jsonify({"error": str(e)}), 500
+class handler(BaseHTTPRequestHandler):
+    """Vercel Python serverless function handler."""
+    
+    def do_POST(self):
+        """Handle POST requests for streaming wrapped generation."""
+        try:
+            # Read request body
+            content_length = int(self.headers.get('Content-Length', 0))
+            body = self.rfile.read(content_length)
+            data = json.loads(body) if body else {}
+            
+            username = data.get("username", "").replace("@", "")
+            
+            if not username:
+                self.send_response(400)
+                self.send_header('Content-Type', 'application/json')
+                self.end_headers()
+                self.wfile.write(json.dumps({"error": "Username is required"}).encode())
+                return
+            
+            # Set up SSE response headers
+            self.send_response(200)
+            self.send_header('Content-Type', 'text/event-stream')
+            self.send_header('Cache-Control', 'no-cache')
+            self.send_header('Connection', 'keep-alive')
+            self.send_header('X-Accel-Buffering', 'no')
+            self.send_header('Access-Control-Allow-Origin', '*')
+            self.end_headers()
+            
+            # Stream the response
+            for chunk in generate_wrapped_streaming(username):
+                self.wfile.write(chunk.encode())
+                self.wfile.flush()
+                
+        except Exception as e:
+            self.send_response(500)
+            self.send_header('Content-Type', 'application/json')
+            self.end_headers()
+            self.wfile.write(json.dumps({"error": str(e)}).encode())
+    
+    def do_OPTIONS(self):
+        """Handle CORS preflight requests."""
+        self.send_response(200)
+        self.send_header('Access-Control-Allow-Origin', '*')
+        self.send_header('Access-Control-Allow-Methods', 'POST, OPTIONS')
+        self.send_header('Access-Control-Allow-Headers', 'Content-Type')
+        self.end_headers()
 
 
-# For local development
+# For local development with Flask
 if __name__ == "__main__":
+    import sys
+    import signal
+    import atexit
+    from flask import Flask, Response, request, jsonify
+    from flask_cors import CORS
+    
+    app = Flask(__name__)
+    CORS(app)
+
+    def graceful_shutdown(signum=None, frame=None):
+        """Handle graceful shutdown on signals."""
+        print("\n🛑 Shutting down gracefully...")
+        sys.exit(0)
+
+    def cleanup():
+        """Cleanup function called on exit."""
+        print("🧹 Cleanup complete.")
+
+    signal.signal(signal.SIGINT, graceful_shutdown)
+    signal.signal(signal.SIGTERM, graceful_shutdown)
+    atexit.register(cleanup)
+
+    @app.route("/api/wrapped/stream", methods=["POST"])
+    def flask_handler():
+        try:
+            data = request.get_json()
+            username = data.get("username", "").replace("@", "") if data else ""
+            
+            if not username:
+                return jsonify({"error": "Username is required"}), 400
+            
+            return Response(
+                generate_wrapped_streaming(username),
+                mimetype="text/event-stream",
+                headers={
+                    "Cache-Control": "no-cache",
+                    "Connection": "keep-alive",
+                    "X-Accel-Buffering": "no",
+                }
+            )
+        except Exception as e:
+            return jsonify({"error": str(e)}), 500
+
     try:
         print("🚀 Starting Flask server on http://localhost:5328")
         print("   Press Ctrl+C to stop\n")
