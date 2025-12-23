@@ -3,54 +3,78 @@
 import { useState, useEffect, useCallback } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { 
-  TrendingUp, Heart, MessageCircle, Repeat2, Calendar, 
-  BarChart3, Sparkles, Share2, RefreshCw, ChevronRight, ChevronLeft, X 
+  Sparkles, Share2, RefreshCw, ChevronRight, ChevronLeft,
+  Palette, MessageSquare, Lightbulb, Layers, Star, BookOpen, Zap
 } from 'lucide-react'
-import { 
-  BarChart, Bar, PieChart, Pie, Cell, ResponsiveContainer, 
-  XAxis, YAxis, Tooltip 
-} from 'recharts'
+import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip } from 'recharts'
+
+// =============================================================================
+// TYPE DEFINITIONS (matching new backend schema)
+// =============================================================================
+
+interface PersonalityArchetype {
+  archetype: string
+  description: string
+  traits: string[]
+  spirit_emoji: string
+}
+
+interface VibeAnalysis {
+  positive_percentage: number
+  neutral_percentage: number
+  negative_percentage: number
+  overall_vibe: string
+  vibe_description: string
+}
+
+interface ThemeData {
+  theme: string
+  weight: number
+  sample_context: string
+}
+
+interface VoiceAnalysis {
+  style_summary: string
+  vocabulary_level: string
+  tone: string
+  signature_phrases: string[]
+  emoji_style: string
+  post_length_style: string
+}
+
+interface ContentMixCategory {
+  category: string
+  percentage: number
+}
+
+interface ContentMix {
+  categories: ContentMixCategory[]
+  primary_mode: string
+  engagement_style: string
+}
+
+interface HighlightMoment {
+  title: string
+  description: string
+  post_snippet: string
+  time_period: string
+}
+
+interface GreatestHit {
+  content: string
+  category: string
+  context: string
+}
 
 interface WrappedData {
-  overview?: {
-    total_posts?: number
-    best_month?: string
-    best_month_engagement?: number
-    average_engagement?: number
-    peak_posting_times?: string[]
-  }
-  sentiment?: {
-    positive_percentage?: number
-    neutral_percentage?: number
-    negative_percentage?: number
-    most_emotional_month?: string
-    sentiment_trend?: string
-  }
-  top_topics?: Array<{
-    topic: string
-    frequency: number
-    engagement: number
-  }>
-  writing_style?: string
-  monthly_highlights?: Array<{
-    month: string
-    key_moments: string[]
-    top_post: string
-    engagement: number
-  }>
-  year_summary?: string
-  interesting_posts?: Array<{
-    content: string
-    engagement: number
-    reason: string
-  }>
-  engagement_metrics?: {
-    total_likes?: number
-    total_retweets?: number
-    total_replies?: number
-    best_category?: string
-    interaction_patterns?: string
-  }
+  personality?: PersonalityArchetype
+  vibe?: VibeAnalysis
+  themes?: ThemeData[]
+  voice?: VoiceAnalysis
+  content_mix?: ContentMix
+  highlights?: HighlightMoment[]
+  greatest_hits?: GreatestHit[]
+  year_story?: string
 }
 
 interface WrappedDisplayProps {
@@ -58,22 +82,43 @@ interface WrappedDisplayProps {
   username: string
 }
 
-const COLORS = ['#fb923c', '#ef4444', '#ec4899', '#f97316', '#dc2626']
+// =============================================================================
+// COLOR PALETTE
+// =============================================================================
+
+const THEME_COLORS = [
+  '#f97316', // orange
+  '#ef4444', // red  
+  '#ec4899', // pink
+  '#8b5cf6', // purple
+  '#3b82f6', // blue
+  '#10b981', // emerald
+  '#f59e0b', // amber
+]
+
+const VIBE_COLORS = {
+  positive: '#10b981',
+  neutral: '#6b7280', 
+  negative: '#ef4444',
+}
+
+// =============================================================================
+// MAIN COMPONENT
+// =============================================================================
 
 export default function WrappedDisplay({ data, username }: WrappedDisplayProps) {
   const [currentSlide, setCurrentSlide] = useState(0)
   const [direction, setDirection] = useState(0)
 
-  // Define slides
   const slides = [
     'intro',
-    'overview',
-    'sentiment',
-    'topics',
-    'style',
+    'personality',
+    'vibe',
+    'themes',
+    'voice',
+    'content_mix',
     'highlights',
-    'engagement',
-    'interesting',
+    'greatest_hits',
     'summary',
     'outro'
   ]
@@ -107,7 +152,10 @@ export default function WrappedDisplay({ data, username }: WrappedDisplayProps) 
     return () => window.removeEventListener('keydown', handleKeyDown)
   }, [nextSlide, prevSlide])
 
-  // Slide Components
+  // ===========================================================================
+  // SLIDE COMPONENTS
+  // ===========================================================================
+
   const IntroSlide = () => (
     <div className="flex flex-col items-center justify-center h-full text-center space-y-6">
       <motion.div
@@ -141,47 +189,210 @@ export default function WrappedDisplay({ data, username }: WrappedDisplayProps) 
     </div>
   )
 
-  const OverviewSlide = () => (
-    <div className="flex flex-col items-center justify-center h-full p-6">
-      <motion.h2 
-        initial={{ y: -20, opacity: 0 }}
-        animate={{ y: 0, opacity: 1 }}
-        className="text-4xl font-bold mb-12 flex items-center gap-3"
-      >
-        <BarChart3 className="text-orange-500 w-10 h-10" />
-        The Numbers
-      </motion.h2>
-      
-      <div className="grid grid-cols-2 gap-6 w-full max-w-4xl">
-        {[
-          { label: 'Total Posts', value: data.overview?.total_posts, delay: 0.1 },
-          { label: 'Best Month', value: data.overview?.best_month, delay: 0.2 },
-          { label: 'Avg Engagement', value: data.overview?.average_engagement?.toLocaleString(), delay: 0.3 },
-          { label: 'Peak Engagement', value: data.overview?.best_month_engagement?.toLocaleString(), delay: 0.4 }
-        ].map((stat, idx) => (
-          <motion.div
-            key={idx}
-            initial={{ scale: 0.8, opacity: 0 }}
-            animate={{ scale: 1, opacity: 1 }}
-            transition={{ delay: stat.delay, type: "spring" }}
-            className="glass-effect p-8 rounded-3xl flex flex-col items-center justify-center text-center aspect-square"
-          >
-            <span className="text-4xl md:text-6xl font-black gradient-text mb-4 break-all">
-              {stat.value || '-'}
-            </span>
-            <span className="text-lg text-gray-400 font-medium">{stat.label}</span>
-          </motion.div>
-        ))}
-      </div>
-    </div>
-  )
+  const PersonalitySlide = () => {
+    const personality = data.personality
+    
+    return (
+      <div className="flex flex-col items-center justify-center h-full p-6 text-center">
+        <motion.p
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          className="text-gray-400 uppercase tracking-widest mb-4"
+        >
+          Your X Personality
+        </motion.p>
 
-  const SentimentSlide = () => {
-    const sentimentData = data.sentiment ? [
-      { name: 'Positive', value: data.sentiment.positive_percentage || 0, color: '#10b981' },
-      { name: 'Neutral', value: data.sentiment.neutral_percentage || 0, color: '#6b7280' },
-      { name: 'Negative', value: data.sentiment.negative_percentage || 0, color: '#ef4444' },
-    ] : []
+        <motion.div
+          initial={{ scale: 0 }}
+          animate={{ scale: 1 }}
+          transition={{ delay: 0.2, type: "spring", stiffness: 200 }}
+          className="text-8xl md:text-9xl mb-6"
+        >
+          {personality?.spirit_emoji || '✨'}
+        </motion.div>
+
+        <motion.h2
+          initial={{ y: 20, opacity: 0 }}
+          animate={{ y: 0, opacity: 1 }}
+          transition={{ delay: 0.4 }}
+          className="text-4xl md:text-6xl font-black gradient-text mb-6"
+        >
+          {personality?.archetype || 'The Storyteller'}
+        </motion.h2>
+
+        <motion.p
+          initial={{ y: 20, opacity: 0 }}
+          animate={{ y: 0, opacity: 1 }}
+          transition={{ delay: 0.6 }}
+          className="text-xl text-gray-300 max-w-2xl mb-8"
+        >
+          {personality?.description}
+        </motion.p>
+
+        <motion.div
+          initial={{ y: 20, opacity: 0 }}
+          animate={{ y: 0, opacity: 1 }}
+          transition={{ delay: 0.8 }}
+          className="flex flex-wrap justify-center gap-3"
+        >
+          {personality?.traits?.map((trait, idx) => (
+            <span
+              key={idx}
+              className="px-4 py-2 glass-effect rounded-full text-sm font-medium text-white"
+            >
+              {trait}
+            </span>
+          ))}
+        </motion.div>
+      </div>
+    )
+  }
+
+  const VibeSlide = () => {
+    const vibe = data.vibe
+    const vibeData = [
+      { name: 'Positive', value: vibe?.positive_percentage || 33, color: VIBE_COLORS.positive },
+      { name: 'Neutral', value: vibe?.neutral_percentage || 34, color: VIBE_COLORS.neutral },
+      { name: 'Negative', value: vibe?.negative_percentage || 33, color: VIBE_COLORS.negative },
+    ]
+
+    return (
+      <div className="flex flex-col items-center justify-center h-full p-6">
+        <motion.h2 
+          initial={{ y: -20, opacity: 0 }}
+          animate={{ y: 0, opacity: 1 }}
+          className="text-4xl font-bold mb-2 flex items-center gap-3"
+        >
+          <Sparkles className="text-pink-500 w-10 h-10" />
+          The Vibe Check
+        </motion.h2>
+
+        <motion.p
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={{ delay: 0.2 }}
+          className="text-2xl md:text-3xl font-bold gradient-text-blue mb-6"
+        >
+          {vibe?.overall_vibe || 'Balanced'}
+        </motion.p>
+
+        <motion.div 
+          initial={{ scale: 0.8, opacity: 0 }}
+          animate={{ scale: 1, opacity: 1 }}
+          transition={{ delay: 0.3 }}
+          className="w-full max-w-md aspect-square relative mb-6"
+        >
+          <ResponsiveContainer width="100%" height="100%">
+            <PieChart>
+              <Pie
+                data={vibeData}
+                cx="50%"
+                cy="50%"
+                innerRadius={70}
+                outerRadius={130}
+                paddingAngle={5}
+                dataKey="value"
+              >
+                {vibeData.map((entry, index) => (
+                  <Cell key={`cell-${index}`} fill={entry.color} stroke="none" />
+                ))}
+              </Pie>
+              <Tooltip 
+                contentStyle={{ backgroundColor: '#1f2937', border: 'none', borderRadius: '0.5rem' }}
+                itemStyle={{ color: '#fff' }}
+                formatter={(value: number) => [`${value}%`, '']}
+              />
+            </PieChart>
+          </ResponsiveContainer>
+          <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+            <div className="flex gap-6 text-sm">
+              {vibeData.map((item, idx) => (
+                <div key={idx} className="flex items-center gap-2">
+                  <div className="w-3 h-3 rounded-full" style={{ backgroundColor: item.color }} />
+                  <span className="text-gray-400">{item.name}</span>
+                </div>
+              ))}
+            </div>
+          </div>
+        </motion.div>
+
+        <motion.div
+          initial={{ y: 20, opacity: 0 }}
+          animate={{ y: 0, opacity: 1 }}
+          transition={{ delay: 0.5 }}
+          className="glass-effect p-6 rounded-2xl max-w-2xl text-center"
+        >
+          <p className="text-lg text-gray-200">{vibe?.vibe_description}</p>
+        </motion.div>
+      </div>
+    )
+  }
+
+  const ThemesSlide = () => {
+    const themes = data.themes?.slice(0, 7) || []
+    const maxWeight = Math.max(...themes.map(t => t.weight), 1)
+
+    return (
+      <div className="flex flex-col items-center justify-center h-full p-6">
+        <motion.h2 
+          initial={{ y: -20, opacity: 0 }}
+          animate={{ y: 0, opacity: 1 }}
+          className="text-4xl font-bold mb-4 flex items-center gap-3"
+        >
+          <Lightbulb className="text-amber-500 w-10 h-10" />
+          What You're About
+        </motion.h2>
+
+        <motion.p
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={{ delay: 0.1 }}
+          className="text-gray-400 mb-10 text-center"
+        >
+          The themes and topics that defined your year
+        </motion.p>
+
+        <div className="w-full max-w-3xl space-y-4">
+          {themes.map((theme, idx) => (
+            <motion.div
+              key={idx}
+              initial={{ x: -50, opacity: 0 }}
+              animate={{ x: 0, opacity: 1 }}
+              transition={{ delay: idx * 0.1 }}
+              className="flex items-center gap-4"
+            >
+              <div className="w-28 text-right font-bold text-gray-300 truncate text-sm">
+                {theme.theme}
+              </div>
+              <div className="flex-1 h-10 bg-white/5 rounded-full overflow-hidden relative">
+                <motion.div
+                  initial={{ width: 0 }}
+                  animate={{ width: `${(theme.weight / maxWeight) * 100}%` }}
+                  transition={{ delay: 0.5 + (idx * 0.1), duration: 1, type: "spring" }}
+                  className="h-full absolute left-0 top-0 rounded-full"
+                  style={{ backgroundColor: THEME_COLORS[idx % THEME_COLORS.length] }}
+                />
+              </div>
+            </motion.div>
+          ))}
+        </div>
+
+        {themes[0]?.sample_context && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            transition={{ delay: 1.2 }}
+            className="mt-8 glass-effect p-4 rounded-xl max-w-2xl"
+          >
+            <p className="text-sm text-gray-400 italic">"{themes[0].sample_context}"</p>
+          </motion.div>
+        )}
+      </div>
+    )
+  }
+
+  const VoiceSlide = () => {
+    const voice = data.voice
 
     return (
       <div className="flex flex-col items-center justify-center h-full p-6">
@@ -190,101 +401,176 @@ export default function WrappedDisplay({ data, username }: WrappedDisplayProps) 
           animate={{ y: 0, opacity: 1 }}
           className="text-4xl font-bold mb-8 flex items-center gap-3"
         >
-          <Sparkles className="text-pink-500 w-10 h-10" />
-          The Vibe Check
+          <MessageSquare className="text-blue-500 w-10 h-10" />
+          Your Voice
         </motion.h2>
 
-        <motion.div 
-          initial={{ scale: 0.8, opacity: 0 }}
+        <motion.div
+          initial={{ scale: 0.9, opacity: 0 }}
           animate={{ scale: 1, opacity: 1 }}
           transition={{ delay: 0.2 }}
-          className="w-full max-w-lg aspect-square relative mb-8"
+          className="glass-effect p-8 rounded-3xl max-w-3xl mb-8"
         >
-          <ResponsiveContainer width="100%" height="100%">
-            <PieChart>
-              <Pie
-                data={sentimentData}
-                cx="50%"
-                cy="50%"
-                innerRadius={60}
-                outerRadius={120}
-                paddingAngle={5}
-                dataKey="value"
-              >
-                {sentimentData.map((entry, index) => (
-                  <Cell key={`cell-${index}`} fill={entry.color} stroke="none" />
-                ))}
-              </Pie>
-              <Tooltip 
-                contentStyle={{ backgroundColor: '#1f2937', border: 'none', borderRadius: '0.5rem' }}
-                itemStyle={{ color: '#fff' }}
-              />
-            </PieChart>
-          </ResponsiveContainer>
-          <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
-            <div className="text-center">
-              <span className="text-3xl font-bold text-white">
-                {data.sentiment?.most_emotional_month}
-              </span>
-              <p className="text-sm text-gray-400">Most Emotional</p>
-            </div>
-          </div>
+          <p className="text-2xl md:text-3xl font-medium leading-relaxed text-center gradient-text-blue">
+            "{voice?.style_summary}"
+          </p>
         </motion.div>
 
-        <motion.div
-          initial={{ y: 20, opacity: 0 }}
-          animate={{ y: 0, opacity: 1 }}
-          transition={{ delay: 0.4 }}
-          className="glass-effect p-6 rounded-2xl max-w-2xl text-center"
-        >
-          <p className="text-xl text-gray-200">{data.sentiment?.sentiment_trend}</p>
-        </motion.div>
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 w-full max-w-4xl">
+          <motion.div
+            initial={{ y: 20, opacity: 0 }}
+            animate={{ y: 0, opacity: 1 }}
+            transition={{ delay: 0.4 }}
+            className="glass-effect p-6 rounded-2xl text-center"
+          >
+            <p className="text-gray-400 text-sm mb-2">Vocabulary</p>
+            <p className="text-lg font-bold text-white">{voice?.vocabulary_level}</p>
+          </motion.div>
+
+          <motion.div
+            initial={{ y: 20, opacity: 0 }}
+            animate={{ y: 0, opacity: 1 }}
+            transition={{ delay: 0.5 }}
+            className="glass-effect p-6 rounded-2xl text-center"
+          >
+            <p className="text-gray-400 text-sm mb-2">Tone</p>
+            <p className="text-lg font-bold text-white">{voice?.tone}</p>
+          </motion.div>
+
+          <motion.div
+            initial={{ y: 20, opacity: 0 }}
+            animate={{ y: 0, opacity: 1 }}
+            transition={{ delay: 0.6 }}
+            className="glass-effect p-6 rounded-2xl text-center"
+          >
+            <p className="text-gray-400 text-sm mb-2">Emoji Style</p>
+            <p className="text-lg font-bold text-white">{voice?.emoji_style}</p>
+          </motion.div>
+        </div>
+
+        {voice?.signature_phrases && voice.signature_phrases.length > 0 && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            transition={{ delay: 0.8 }}
+            className="mt-8"
+          >
+            <p className="text-gray-400 text-sm mb-3 text-center">Signature phrases</p>
+            <div className="flex flex-wrap justify-center gap-2">
+              {voice.signature_phrases.map((phrase, idx) => (
+                <span
+                  key={idx}
+                  className="px-4 py-2 bg-gradient-to-r from-orange-500/20 to-pink-500/20 rounded-full text-sm font-mono text-orange-300"
+                >
+                  "{phrase}"
+                </span>
+              ))}
+            </div>
+          </motion.div>
+        )}
       </div>
     )
   }
 
-  const TopicsSlide = () => {
-    const topicsData = data.top_topics?.slice(0, 7).map((topic, idx) => ({
-      name: topic.topic,
-      value: topic.frequency,
-      color: COLORS[idx % COLORS.length]
-    })) || []
+  const ContentMixSlide = () => {
+    const mix = data.content_mix
+    const categories = mix?.categories?.slice(0, 5) || []
 
     return (
       <div className="flex flex-col items-center justify-center h-full p-6">
         <motion.h2 
           initial={{ y: -20, opacity: 0 }}
           animate={{ y: 0, opacity: 1 }}
-          className="text-4xl font-bold mb-12 flex items-center gap-3"
+          className="text-4xl font-bold mb-4 flex items-center gap-3"
         >
-          <TrendingUp className="text-red-500 w-10 h-10" />
-          Top Topics
+          <Layers className="text-purple-500 w-10 h-10" />
+          Your Content Mix
         </motion.h2>
 
-        <div className="w-full max-w-3xl space-y-4">
-          {topicsData.map((topic, idx) => (
+        <motion.p
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={{ delay: 0.1 }}
+          className="text-2xl font-bold gradient-text mb-8"
+        >
+          {mix?.primary_mode || 'Original Thinker'}
+        </motion.p>
+
+        <div className="grid grid-cols-2 md:grid-cols-3 gap-4 w-full max-w-3xl mb-8">
+          {categories.map((cat, idx) => (
             <motion.div
               key={idx}
-              initial={{ x: -50, opacity: 0 }}
-              animate={{ x: 0, opacity: 1 }}
-              transition={{ delay: idx * 0.1 }}
-              className="flex items-center gap-4"
+              initial={{ scale: 0.8, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              transition={{ delay: 0.2 + idx * 0.1 }}
+              className="glass-effect p-6 rounded-2xl text-center relative overflow-hidden"
             >
-              <div className="w-32 text-right font-bold text-gray-300 truncate">
-                {topic.name}
+              <div 
+                className="absolute bottom-0 left-0 right-0 opacity-30"
+                style={{ 
+                  height: `${cat.percentage}%`,
+                  backgroundColor: THEME_COLORS[idx % THEME_COLORS.length]
+                }}
+              />
+              <p className="text-3xl font-black text-white relative z-10">{cat.percentage}%</p>
+              <p className="text-sm text-gray-400 relative z-10 mt-1">{cat.category}</p>
+            </motion.div>
+          ))}
+        </div>
+
+        {mix?.engagement_style && (
+          <motion.div
+            initial={{ y: 20, opacity: 0 }}
+            animate={{ y: 0, opacity: 1 }}
+            transition={{ delay: 0.8 }}
+            className="glass-effect p-6 rounded-2xl max-w-2xl text-center"
+          >
+            <p className="text-gray-400 text-sm mb-2">Engagement Style</p>
+            <p className="text-lg text-white">{mix.engagement_style}</p>
+          </motion.div>
+        )}
+      </div>
+    )
+  }
+
+  const HighlightsSlide = () => {
+    const highlights = data.highlights?.slice(0, 4) || []
+
+    return (
+      <div className="flex flex-col items-center justify-center h-full p-6">
+        <motion.h2 
+          initial={{ y: -20, opacity: 0 }}
+          animate={{ y: 0, opacity: 1 }}
+          className="text-4xl font-bold mb-8 flex items-center gap-3"
+        >
+          <Star className="text-yellow-500 w-10 h-10 fill-yellow-500" />
+          Notable Moments
+        </motion.h2>
+
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 w-full max-w-5xl">
+          {highlights.map((highlight, idx) => (
+            <motion.div
+              key={idx}
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: idx * 0.15 }}
+              className="glass-effect p-6 rounded-2xl border-l-4 relative overflow-hidden"
+              style={{ borderColor: THEME_COLORS[idx % THEME_COLORS.length] }}
+            >
+              <div className="flex justify-between items-start mb-3">
+                <h3 className="text-xl font-bold text-white">{highlight.title}</h3>
+                {highlight.time_period && (
+                  <span className="text-xs text-gray-500 bg-white/10 px-2 py-1 rounded">
+                    {highlight.time_period}
+                  </span>
+                )}
               </div>
-              <div className="flex-1 h-12 bg-white/5 rounded-full overflow-hidden relative">
-                <motion.div
-                  initial={{ width: 0 }}
-                  animate={{ width: `${Math.min(100, (topic.value / (topicsData[0]?.value || 1)) * 100)}%` }}
-                  transition={{ delay: 0.5 + (idx * 0.1), duration: 1, type: "spring" }}
-                  className="h-full absolute left-0 top-0 rounded-full"
-                  style={{ backgroundColor: topic.color }}
-                />
-                <div className="absolute inset-0 flex items-center px-4">
-                  <span className="text-white font-bold drop-shadow-md z-10">{topic.value} posts</span>
-                </div>
-              </div>
+              <p className="text-gray-300 text-sm mb-3">{highlight.description}</p>
+              {highlight.post_snippet && (
+                <p className="text-xs text-gray-500 italic border-t border-white/10 pt-3 mt-3">
+                  "{highlight.post_snippet}"
+                </p>
+              )}
             </motion.div>
           ))}
         </div>
@@ -292,164 +578,94 @@ export default function WrappedDisplay({ data, username }: WrappedDisplayProps) 
     )
   }
 
-  const StyleSlide = () => (
-    <div className="flex flex-col items-center justify-center h-full p-6 text-center">
-      <motion.h2 
-        initial={{ opacity: 0 }}
-        animate={{ opacity: 1 }}
-        className="text-2xl text-gray-400 mb-8 uppercase tracking-widest"
-      >
-        Your Writing Style
-      </motion.h2>
-      
-      <motion.div
-        initial={{ scale: 0.9, opacity: 0 }}
-        animate={{ scale: 1, opacity: 1 }}
-        transition={{ delay: 0.2 }}
-        className="glass-effect p-12 rounded-3xl max-w-4xl relative"
-      >
-        <span className="absolute top-4 left-6 text-8xl text-orange-500/20 font-serif">"</span>
-        <p className="text-3xl md:text-5xl font-medium leading-relaxed gradient-text-blue">
-          {data.writing_style}
-        </p>
-        <span className="absolute bottom-[-20px] right-6 text-8xl text-orange-500/20 font-serif rotate-180">"</span>
-      </motion.div>
-    </div>
-  )
+  const GreatestHitsSlide = () => {
+    const hits = data.greatest_hits?.slice(0, 4) || []
 
-  const HighlightsSlide = () => (
-    <div className="flex flex-col items-center justify-center h-full p-6">
-      <motion.h2 
-        initial={{ y: -20, opacity: 0 }}
-        animate={{ y: 0, opacity: 1 }}
-        className="text-4xl font-bold mb-8 flex items-center gap-3"
-      >
-        <Calendar className="text-orange-500 w-10 h-10" />
-        Monthly Highlights
-      </motion.h2>
+    return (
+      <div className="flex flex-col items-center justify-center h-full p-6">
+        <motion.h2 
+          initial={{ y: -20, opacity: 0 }}
+          animate={{ y: 0, opacity: 1 }}
+          className="text-4xl font-bold mb-8 flex items-center gap-3"
+        >
+          <Zap className="text-orange-500 w-10 h-10" />
+          Greatest Hits
+        </motion.h2>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 w-full max-w-6xl max-h-[70vh] overflow-y-auto p-4 scrollbar-hide">
-        {data.monthly_highlights?.map((highlight, idx) => (
-          <motion.div
-            key={idx}
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: idx * 0.05 }}
-            className="glass-effect p-6 rounded-xl border-l-4 border-orange-500"
-          >
-            <h3 className="text-xl font-bold mb-2 text-white">{highlight.month}</h3>
-            <p className="text-gray-400 text-sm mb-3 line-clamp-3">{highlight.key_moments?.[0]}</p>
-            <div className="text-xs text-orange-400 font-mono">
-              Top Post: {highlight.engagement?.toLocaleString()} engagement
-            </div>
-          </motion.div>
-        ))}
+        <div className="space-y-4 w-full max-w-4xl">
+          {hits.map((hit, idx) => (
+            <motion.div
+              key={idx}
+              initial={{ x: idx % 2 === 0 ? -50 : 50, opacity: 0 }}
+              animate={{ x: 0, opacity: 1 }}
+              transition={{ delay: idx * 0.2 }}
+              className="glass-effect p-6 rounded-2xl relative overflow-hidden"
+            >
+              <div 
+                className="absolute top-0 left-0 w-2 h-full"
+                style={{ backgroundColor: THEME_COLORS[idx % THEME_COLORS.length] }}
+              />
+              <div className="flex justify-between items-start mb-3 ml-2">
+                <span 
+                  className="text-xs font-bold uppercase tracking-wider px-3 py-1 rounded-full"
+                  style={{ 
+                    backgroundColor: `${THEME_COLORS[idx % THEME_COLORS.length]}30`,
+                    color: THEME_COLORS[idx % THEME_COLORS.length]
+                  }}
+                >
+                  {hit.category}
+                </span>
+              </div>
+              <p className="text-lg text-white mb-3 leading-relaxed ml-2">"{hit.content}"</p>
+              {hit.context && (
+                <p className="text-sm text-gray-400 ml-2">{hit.context}</p>
+              )}
+            </motion.div>
+          ))}
+        </div>
       </div>
-    </div>
-  )
-
-  const EngagementSlide = () => (
-    <div className="flex flex-col items-center justify-center h-full p-6">
-      <motion.h2 
-        initial={{ scale: 0.5, opacity: 0 }}
-        animate={{ scale: 1, opacity: 1 }}
-        className="text-4xl font-bold mb-12 flex items-center gap-3"
-      >
-        <Heart className="text-red-600 w-10 h-10 fill-red-600 animate-pulse" />
-        The Love You Got
-      </motion.h2>
-
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-8 w-full max-w-5xl">
-        {[
-          { icon: Heart, color: 'text-red-500', label: 'Likes', value: data.engagement_metrics?.total_likes },
-          { icon: Repeat2, color: 'text-blue-500', label: 'Retweets', value: data.engagement_metrics?.total_retweets },
-          { icon: MessageCircle, color: 'text-green-500', label: 'Replies', value: data.engagement_metrics?.total_replies },
-        ].map((item, idx) => (
-          <motion.div
-            key={idx}
-            initial={{ y: 50, opacity: 0 }}
-            animate={{ y: 0, opacity: 1 }}
-            transition={{ delay: idx * 0.2 }}
-            className="glass-effect p-10 rounded-3xl flex flex-col items-center"
-          >
-            <item.icon className={`w-16 h-16 mb-6 ${item.color}`} />
-            <span className="text-5xl font-bold text-white mb-2">
-              {item.value?.toLocaleString()}
-            </span>
-            <span className="text-xl text-gray-400">{item.label}</span>
-          </motion.div>
-        ))}
-      </div>
-    </div>
-  )
-
-  const InterestingSlide = () => (
-    <div className="flex flex-col items-center justify-center h-full p-6">
-      <motion.h2 
-        initial={{ y: -20, opacity: 0 }}
-        animate={{ y: 0, opacity: 1 }}
-        className="text-4xl font-bold mb-8"
-      >
-        Top Hits
-      </motion.h2>
-
-      <div className="space-y-6 w-full max-w-4xl">
-        {data.interesting_posts?.slice(0, 3).map((post, idx) => (
-          <motion.div
-            key={idx}
-            initial={{ x: idx % 2 === 0 ? -50 : 50, opacity: 0 }}
-            animate={{ x: 0, opacity: 1 }}
-            transition={{ delay: idx * 0.2 }}
-            className="glass-effect p-6 rounded-2xl relative overflow-hidden"
-          >
-            <div className="absolute top-0 left-0 w-2 h-full bg-gradient-to-b from-orange-500 to-pink-500" />
-            <p className="text-xl text-white mb-4 font-light leading-relaxed">"{post.content}"</p>
-            <div className="flex justify-between items-end">
-              <span className="text-sm text-gray-400 max-w-[70%]">{post.reason}</span>
-              <span className="font-bold text-orange-500 text-lg">
-                {post.engagement?.toLocaleString()} <Heart className="inline w-4 h-4 ml-1" />
-              </span>
-            </div>
-          </motion.div>
-        ))}
-      </div>
-    </div>
-  )
+    )
+  }
 
   const SummarySlide = () => (
     <div className="flex flex-col items-center justify-center h-full p-6 max-w-4xl mx-auto text-center">
       <motion.h2 
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
-        className="text-3xl font-bold mb-8 gradient-text"
+        className="text-3xl font-bold mb-8 flex items-center gap-3"
       >
-        The Big Picture
+        <BookOpen className="text-emerald-500 w-8 h-8" />
+        Your Year Story
       </motion.h2>
       
       <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ delay: 0.2 }}
-        className="glass-effect p-8 rounded-3xl"
+        className="glass-effect p-10 rounded-3xl relative"
       >
-        <p className="text-xl md:text-2xl leading-relaxed text-gray-200 whitespace-pre-line">
-          {data.year_summary}
+        <span className="absolute top-4 left-6 text-6xl text-orange-500/20 font-serif">"</span>
+        <p className="text-xl md:text-2xl leading-relaxed text-gray-200 whitespace-pre-line relative z-10">
+          {data.year_story}
         </p>
+        <span className="absolute bottom-[-10px] right-6 text-6xl text-orange-500/20 font-serif rotate-180">"</span>
       </motion.div>
     </div>
   )
 
   const OutroSlide = () => {
     const handleShare = () => {
+      const shareText = `I'm ${data.personality?.archetype || 'a Storyteller'} ${data.personality?.spirit_emoji || '✨'} on X! Check out my 2025 Wrapped`
+      
       if (navigator.share) {
         navigator.share({
           title: `${username}'s 2025 X Wrapped`,
-          text: `Check out my 2025 Year in Review on X!`,
+          text: shareText,
           url: window.location.href,
         })
       } else {
-        navigator.clipboard.writeText(window.location.href)
-        alert('Link copied!')
+        navigator.clipboard.writeText(`${shareText}\n${window.location.href}`)
+        alert('Copied to clipboard!')
       }
     }
 
@@ -462,10 +678,13 @@ export default function WrappedDisplay({ data, username }: WrappedDisplayProps) 
           className="relative"
         >
           <div className="absolute inset-0 bg-gradient-to-r from-orange-500 to-pink-500 blur-3xl opacity-20" />
-          <h1 className="text-6xl md:text-8xl font-black text-white mb-4 relative z-10">
-            THANKS
+          <div className="text-8xl mb-4 relative z-10">
+            {data.personality?.spirit_emoji || '✨'}
+          </div>
+          <h1 className="text-5xl md:text-7xl font-black text-white mb-2 relative z-10">
+            {data.personality?.archetype || 'Storyteller'}
           </h1>
-          <p className="text-2xl text-gray-400 relative z-10">for a great 2025</p>
+          <p className="text-xl text-gray-400 relative z-10">That's your 2025 on X</p>
         </motion.div>
 
         <motion.div
@@ -479,7 +698,7 @@ export default function WrappedDisplay({ data, username }: WrappedDisplayProps) 
             className="w-full py-4 bg-white text-black font-bold text-xl rounded-full hover:scale-105 transition-transform flex items-center justify-center gap-2"
           >
             <Share2 className="w-6 h-6" />
-            Share Wrapped
+            Share My Personality
           </button>
           <button
             onClick={() => window.location.reload()}
@@ -493,17 +712,20 @@ export default function WrappedDisplay({ data, username }: WrappedDisplayProps) 
     )
   }
 
-  // Slide rendering logic
+  // ===========================================================================
+  // SLIDE RENDERING
+  // ===========================================================================
+
   const renderSlide = () => {
     switch (slides[currentSlide]) {
       case 'intro': return <IntroSlide />
-      case 'overview': return <OverviewSlide />
-      case 'sentiment': return <SentimentSlide />
-      case 'topics': return <TopicsSlide />
-      case 'style': return <StyleSlide />
+      case 'personality': return <PersonalitySlide />
+      case 'vibe': return <VibeSlide />
+      case 'themes': return <ThemesSlide />
+      case 'voice': return <VoiceSlide />
+      case 'content_mix': return <ContentMixSlide />
       case 'highlights': return <HighlightsSlide />
-      case 'engagement': return <EngagementSlide />
-      case 'interesting': return <InterestingSlide />
+      case 'greatest_hits': return <GreatestHitsSlide />
       case 'summary': return <SummarySlide />
       case 'outro': return <OutroSlide />
       default: return null
@@ -529,7 +751,7 @@ export default function WrappedDisplay({ data, username }: WrappedDisplayProps) 
         ))}
       </div>
 
-      {/* Navigation Controls - only show when not on outro slide */}
+      {/* Navigation Controls */}
       {slides[currentSlide] !== 'outro' && (
         <div className="absolute inset-0 flex z-40 pointer-events-none">
           <div 
