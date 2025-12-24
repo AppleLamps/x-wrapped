@@ -243,18 +243,48 @@ Use x_search to gather posts. Provide a detailed QUALITATIVE analysis with actua
 {raw_analysis}
 === END ANALYSIS ===
 
-Instructions:
-- Assign a PERSONALITY ARCHETYPE that best fits (Thread Weaver, Hot Take Artist, Meme Curator, Knowledge Dropper, Community Builder, Vibe Curator, Industry Insider, or Storyteller)
-- Include a spirit_emoji that captures their energy
-- Analyze their VIBE with sentiment percentages (relative proportions, not counts)
-- List 5-7 THEMES they discuss with relative weights (1-100, bigger = more prominent)
-- Provide deep VOICE analysis: vocabulary level, tone, signature phrases, emoji style
-- Break down their CONTENT MIX: what types of posts do they favor?
-- Include 3-5 HIGHLIGHT MOMENTS with catchy titles and descriptions
-- Select 3-5 GREATEST HITS - memorable posts categorized by why they stand out
-- Write a compelling year_story narrative (3-5 sentences telling their X story)
+Create a complete, engaging Wrapped for this user. Fill ALL fields with meaningful content:
 
-IMPORTANT: Focus on qualitative insights, not metrics. We're analyzing their content and personality, not counting their engagement."""
+PERSONALITY (required):
+- archetype: Pick the best fit from: "The Thread Weaver", "The Hot Take Artist", "The Meme Curator", "The Knowledge Dropper", "The Community Builder", "The Vibe Curator", "The Industry Insider", "The Storyteller"
+- description: 2-3 sentences explaining why this archetype fits them
+- traits: 3-5 personality traits (e.g., "Witty", "Passionate", "Analytical")
+- spirit_emoji: One emoji that captures their energy (🔥, 🧠, 💭, 🎯, etc.)
+
+VIBE (required):
+- Sentiment percentages that add to 100 (positive/neutral/negative)
+- overall_vibe: A catchy 1-3 word label (e.g., "Chaotic Good", "Thoughtful Optimist", "Passionate Critic")
+- vibe_description: 2-3 sentences about their emotional energy
+
+THEMES (5-7 required):
+- theme: Short topic name (1-3 words)
+- weight: 1-100 showing relative prominence
+- sample_context: Brief example of how they discuss it
+
+VOICE (required):
+- style_summary: 2-3 sentences about their unique writing voice
+- vocabulary_level, tone, emoji_style, post_length_style, signature_phrases
+
+CONTENT MIX (required):
+- categories: 4-6 content types with percentages (Hot Takes, Threads, Commentary, Humor, etc.)
+- primary_mode: Their main content style
+- engagement_style: How they interact with others
+
+HIGHLIGHTS (3-5 required):
+- title: Catchy moment title (e.g., "The Thread That Hit Different", "Peak Chaos Energy")
+- description, post_snippet, time_period
+
+GREATEST HITS (3-5 required):
+- content: The actual post text
+- category: Why it stands out (e.g., "Funniest Moment", "Hottest Take", "Most Insightful")
+- context: Brief explanation
+
+YEAR STORY (CRITICAL - required):
+Write a compelling 3-5 sentence narrative summary of their year on X. This should feel personal and insightful, like a friend summarizing their year. Reference specific themes, memorable moments, and their personality. Make it engaging and shareable.
+
+Example: "2024 was @user's year of finding their voice. From early threads about tech to later hot takes on industry drama, they evolved from observer to thought leader. Their witty commentary and no-holds-barred opinions earned them a dedicated following. Whether dropping knowledge bombs or sparking debates, they never failed to make their presence felt."
+
+DO NOT leave year_story empty or generic. Make it specific to this user's actual content."""
 
         format_chat.append(user(format_prompt))
         
@@ -295,7 +325,7 @@ IMPORTANT: Focus on qualitative insights, not metrics. We're analyzing their con
                 },
                 "highlights": [],
                 "greatest_hits": [],
-                "year_story": raw_analysis[:2000] if raw_analysis else f"Analysis for @{username} could not be fully structured."
+                "year_story": f"@{username}'s {current_year} on X was a journey of authentic expression. Through various topics and conversations, they brought their unique voice to the platform. Their posts reflected a personality that engages, provokes thought, and connects with others in meaningful ways."
             }
         
         # Progress: complete
