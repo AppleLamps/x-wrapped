@@ -211,7 +211,7 @@ export default function WrappedDisplay({ data, username }: WrappedDisplayProps) 
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
         transition={{ delay: 1, duration: 1 }}
-        className="absolute bottom-12 flex flex-col items-center gap-2"
+        className="absolute bottom-12 flex flex-col items-center gap-3"
       >
         <motion.div
           animate={{ y: [0, 8, 0] }}
@@ -220,7 +220,8 @@ export default function WrappedDisplay({ data, username }: WrappedDisplayProps) 
         >
           <div className="w-1.5 h-3 bg-white/50 rounded-full" />
         </motion.div>
-        <p className="text-gray-500 text-sm">Tap or swipe to continue</p>
+        <p className="text-gray-500 text-sm">Tap anywhere to continue</p>
+        <p className="text-gray-600 text-xs hidden md:block">or use ← → arrow keys</p>
       </motion.div>
     </div>
   )
@@ -1116,35 +1117,67 @@ export default function WrappedDisplay({ data, username }: WrappedDisplayProps) 
 
   return (
     <div className="story-container">
-      {/* Progress Bar */}
+      {/* Progress Bar - Clickable to jump to slides */}
       <div className="absolute top-4 left-4 right-4 z-50 flex gap-1.5">
         {slides.map((_, idx) => (
-          <div 
-            key={idx} 
-            className="h-1 flex-1 bg-white/20 rounded-full overflow-hidden"
+          <button
+            key={idx}
+            onClick={() => {
+              setDirection(idx > currentSlide ? 1 : -1)
+              setCurrentSlide(idx)
+            }}
+            className="h-1.5 flex-1 bg-white/15 rounded-full overflow-hidden hover:bg-white/25 transition-colors cursor-pointer group"
+            aria-label={`Go to slide ${idx + 1}`}
           >
             <motion.div
-              className="h-full bg-white"
+              className={`h-full rounded-full ${idx === currentSlide ? 'bg-gradient-to-r from-orange-400 to-pink-500' : 'bg-white/80'}`}
               initial={{ width: idx < currentSlide ? '100%' : '0%' }}
               animate={{ width: idx <= currentSlide ? '100%' : '0%' }}
-              transition={{ duration: 0.3 }}
+              transition={{ duration: 0.4, ease: "easeOut" }}
             />
-          </div>
+          </button>
         ))}
       </div>
 
-      {/* Navigation Controls */}
+      {/* Navigation Controls - Invisible touch zones with edge indicators */}
       {slides[currentSlide] !== 'outro' && (
-        <div className="absolute inset-0 flex z-40 pointer-events-none">
-          <div 
-            className="w-1/3 h-full pointer-events-auto cursor-pointer hover:bg-white/5 transition-colors"
-            onClick={prevSlide}
-          />
-          <div 
-            className="w-2/3 h-full pointer-events-auto cursor-pointer hover:bg-white/5 transition-colors"
-            onClick={nextSlide}
-          />
-        </div>
+        <>
+          {/* Invisible click zones - no hover highlight */}
+          <div className="absolute inset-0 flex z-40 pointer-events-none">
+            <div
+              className="w-1/3 h-full pointer-events-auto cursor-w-resize"
+              onClick={prevSlide}
+            />
+            <div
+              className="w-2/3 h-full pointer-events-auto cursor-e-resize"
+              onClick={nextSlide}
+            />
+          </div>
+
+          {/* Subtle edge navigation hints */}
+          {currentSlide > 0 && (
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              className="absolute left-3 top-1/2 -translate-y-1/2 z-50 pointer-events-none"
+            >
+              <div className="flex flex-col items-center gap-1 opacity-30 hover:opacity-60 transition-opacity">
+                <div className="w-1 h-8 bg-white/40 rounded-full" />
+              </div>
+            </motion.div>
+          )}
+          {currentSlide < totalSlides - 1 && (
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              className="absolute right-3 top-1/2 -translate-y-1/2 z-50 pointer-events-none"
+            >
+              <div className="flex flex-col items-center gap-1 opacity-30 hover:opacity-60 transition-opacity">
+                <div className="w-1 h-8 bg-white/40 rounded-full" />
+              </div>
+            </motion.div>
+          )}
+        </>
       )}
 
       {/* Main Content */}
@@ -1161,6 +1194,19 @@ export default function WrappedDisplay({ data, username }: WrappedDisplayProps) 
           {renderSlide()}
         </motion.div>
       </AnimatePresence>
+
+      {/* Slide Counter - subtle indicator */}
+      {slides[currentSlide] !== 'intro' && slides[currentSlide] !== 'outro' && (
+        <div className="absolute bottom-4 left-1/2 -translate-x-1/2 z-50">
+          <motion.div
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="text-xs text-white/30 font-mono tracking-wider"
+          >
+            {currentSlide + 1} / {totalSlides}
+          </motion.div>
+        </div>
+      )}
 
       {/* Background Ambience */}
       <div className="absolute inset-0 pointer-events-none z-10">
