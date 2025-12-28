@@ -81,6 +81,20 @@ class GreatestHit(BaseModel):
     context: str = Field(description="Brief context about why this post stands out", default="")
 
 
+class EvolutionArc(BaseModel):
+    """How the user evolved over the year"""
+    early_year_vibe: str = Field(description="Their energy/focus in Q1 (Jan-Mar) - 1-2 sentences")
+    mid_year_shift: str = Field(description="How things changed in Q2-Q3 (Apr-Sep) - 1-2 sentences")
+    late_year_energy: str = Field(description="Their vibe in Q4 (Oct-Dec) - 1-2 sentences")
+    transformation_summary: str = Field(description="One sentence capturing their overall evolution arc")
+
+
+class SurprisingInsight(BaseModel):
+    """An unexpected or surprising observation about the user"""
+    insight: str = Field(description="The surprising fact or observation")
+    evidence: str = Field(description="Brief supporting evidence from their posts", default="")
+
+
 class WrappedResponse(BaseModel):
     """Complete wrapped data for a user's year on X - Content-focused, no fake metrics"""
     personality: PersonalityArchetype = Field(description="The user's X personality archetype")
@@ -91,6 +105,14 @@ class WrappedResponse(BaseModel):
     highlights: List[HighlightMoment] = Field(description="3-5 notable moments from the year", default_factory=list)
     greatest_hits: List[GreatestHit] = Field(description="3-5 memorable posts selected for quality", default_factory=list)
     year_story: str = Field(description="3-5 sentence narrative telling the story of their year on X", default="Unable to generate story.")
+    # New insightful fields
+    evolution: EvolutionArc = Field(description="How they evolved over the year from Q1 to Q4")
+    surprising_facts: List[SurprisingInsight] = Field(description="3-5 unexpected or surprising observations about them", default_factory=list)
+    hot_take_of_year: str = Field(description="Their spiciest, most controversial, or boldest opinion of the year", default="")
+    roast: str = Field(description="A playful, witty roast of their X presence (funny but not mean)", default="")
+    if_they_were: str = Field(description="'If @user was a [thing], they'd be...' - a fun, creative comparison", default="")
+    power_move: str = Field(description="Their signature move or power play on X - what they do better than anyone", default="")
+    one_liner: str = Field(description="A single shareable sentence that captures their entire X presence", default="")
 
 
 # Fun, engaging messages for each tool call
@@ -151,63 +173,140 @@ def get_tool_message(tool_name: str) -> str:
 
 
 def generate_wrapped_streaming(username: str):
-    """Generate a detailed wrapped report for a user using agentic tool calling + structured output"""
+    """Generate a detailed wrapped report for a user using multi-phase agentic analysis + structured output"""
     from xai_sdk import Client
     from xai_sdk.chat import user, assistant
     from xai_sdk.tools import x_search, code_execution
-    
+
     try:
         api_key = os.getenv("XAI_API_KEY")
         if not api_key:
             yield f"data: {json.dumps({'type': 'error', 'error': 'XAI_API_KEY environment variable is not set'})}\n\n"
             return
-        
+
         client = Client(api_key=api_key)
         current_year = datetime.now().year
-        
+
         # Progress update
-        yield f"data: {json.dumps({'type': 'progress', 'message': f'🚀 Firing up Grok for @{username}...', 'step': 1, 'total': 3})}\n\n"
-        
+        yield f"data: {json.dumps({'type': 'progress', 'message': f'🚀 Firing up Grok for @{username}...', 'step': 1, 'total': 4})}\n\n"
+
         # =================================================================
-        # STEP 1: AGENTIC TOOL CALLING - Gather all data about the user
-        # (Agentic requests do NOT support structured output)
+        # STEP 1: MULTI-PHASE AGENTIC DEEP DIVE
+        # Use allowed_x_handles to ONLY get this user's posts
+        # Enable both image AND video understanding for rich analysis
         # =================================================================
         agentic_chat = client.chat.create(
             model="grok-4-1-fast",
-            tools=[x_search(enable_image_understanding=True), code_execution()],
+            tools=[
+                x_search(
+                    allowed_x_handles=[username],
+                    enable_image_understanding=True,
+                    enable_video_understanding=True
+                ),
+                code_execution()
+            ],
         )
-        
-        analysis_prompt = f"""Analyze @{username}'s X (Twitter) content and personality for {current_year}.
 
-IMPORTANT: Focus on CONTENT ANALYSIS, not metrics. We cannot accurately count total posts, likes, or engagement - but we CAN deeply analyze the content of posts we find.
-
-Your task:
-1. Search for posts from @{username} throughout {current_year}
-2. For each post found, note: the full content, the date/time period, what it reveals about the person
-3. Analyze their PERSONALITY and VOICE - what kind of X user are they?
-4. Identify their top THEMES and TOPICS - what do they care about?
-5. Analyze their WRITING STYLE - how do they express themselves?
-6. Note their CONTENT MIX - do they post threads, hot takes, memes, questions?
-7. Find their GREATEST HITS - posts that are memorable for their content quality
-8. Identify NOTABLE MOMENTS - interesting periods or topics from their year
-
-Personality archetypes to consider:
-- "The Thread Weaver" - Loves building detailed, thoughtful threads
-- "The Hot Take Artist" - Posts bold, provocative opinions
-- "The Meme Curator" - Shares humor and cultural moments
-- "The Knowledge Dropper" - Educational, informative content
-- "The Community Builder" - Highly interactive, lots of replies
-- "The Vibe Curator" - Aesthetic posts, mood-setting content
-- "The Industry Insider" - Focused professional/niche expertise
-- "The Storyteller" - Personal narratives and life updates
-
-Use x_search to gather posts. Provide a detailed QUALITATIVE analysis with actual post content, personality observations, voice analysis, and thematic insights. DO NOT focus on counting or metrics."""
-        
-        agentic_chat.append(user(analysis_prompt))
-        
         # Reset tool call counts for this request
         tool_call_counts.clear()
-        
+
+        analysis_prompt = f"""You are creating a "Year Wrapped" for @{username} - like Spotify Wrapped but for X/Twitter.
+
+Your goal: Create the most INSIGHTFUL, SURPRISING, and SHAREABLE analysis possible. Boring is failure.
+
+=== MULTI-PHASE SEARCH STRATEGY ===
+
+PHASE 1 - QUARTERLY TIMELINE SCAN:
+Search their posts across different time periods to understand their EVOLUTION:
+- Q1 (Jan-Mar {current_year}): What were they focused on? What was their energy?
+- Q2 (Apr-Jun {current_year}): How did things shift? Any new interests?
+- Q3 (Jul-Sep {current_year}): What dominated their summer/fall?
+- Q4 (Oct-Dec {current_year}): Where are they now? How did they end the year?
+
+PHASE 2 - DEEP THEMATIC DIVES:
+After the timeline scan, do focused searches on:
+- Their most passionate/recurring topics
+- Any controversies or hot takes
+- Their funniest or most personal moments
+- Threads and long-form content
+
+PHASE 3 - SIGNATURE PATTERNS:
+Look for:
+- Recurring phrases they use
+- Their posting style (time of day, thread vs single post)
+- How they interact with others
+- What makes them UNIQUE vs generic
+
+=== WHAT TO CAPTURE ===
+
+For each post you find, note:
+1. The FULL post content (exact text)
+2. When it was posted (month/quarter)
+3. What it reveals about their personality
+4. Is this a "greatest hit" candidate?
+5. Is this surprisingly different from their usual content?
+
+=== ANALYSIS REQUIREMENTS ===
+
+You MUST find:
+- At least 3-5 posts from EACH quarter (Q1, Q2, Q3, Q4)
+- Their single HOTTEST take of the year
+- At least one SURPRISING thing about them (unexpected interest, opinion shift, etc.)
+- Specific phrases or words they use repeatedly
+- How they EVOLVED from January to December
+
+=== PERSONALITY ARCHETYPES ===
+Pick the BEST fit (or blend):
+- "The Thread Weaver" - Detailed, thoughtful long-form content
+- "The Hot Take Artist" - Bold, provocative opinions
+- "The Meme Lord" - Humor, cultural moments, shitposts
+- "The Knowledge Dropper" - Educational, informative
+- "The Reply Guy/Gal" - Highly interactive, lives in replies
+- "The Vibe Curator" - Aesthetic, mood-setting content
+- "The Industry Oracle" - Professional niche expertise
+- "The Chaos Agent" - Unpredictable, wild energy
+- "The Philosopher" - Deep thoughts, existential musings
+- "The Hype Beast" - Excitement, enthusiasm, cheerleading
+
+=== OUTPUT FORMAT ===
+
+Provide a DETAILED analysis with:
+
+1. QUARTERLY EVOLUTION:
+   - Q1 summary with example posts
+   - Q2 summary with example posts
+   - Q3 summary with example posts
+   - Q4 summary with example posts
+   - Overall transformation arc
+
+2. PERSONALITY & VOICE:
+   - Which archetype(s) fit best and WHY
+   - Their unique writing quirks
+   - Tone and vocabulary analysis
+   - Signature phrases (with examples)
+
+3. TOP THEMES (ranked by prominence):
+   - Theme name + example of how they discuss it
+   - At least 5-7 themes
+
+4. GREATEST HITS (3-5 best posts):
+   - Full post content
+   - Why it's a hit (funniest, boldest, most insightful, etc.)
+
+5. SURPRISING DISCOVERIES:
+   - Things that don't fit their usual pattern
+   - Unexpected interests or opinions
+   - Evolution or opinion changes
+
+6. ROAST MATERIAL:
+   - Playful observations about their habits
+   - Funny patterns in their posting
+   - What would their followers joke about?
+
+Be SPECIFIC. Quote actual posts. Give exact examples. Generic analysis = failure."""
+
+        agentic_chat.append(user(analysis_prompt))
+
         # Stream the agent's reasoning and tool calls
         analysis_content = []
         for response, chunk in agentic_chat.stream():
@@ -215,15 +314,15 @@ Use x_search to gather posts. Provide a detailed QUALITATIVE analysis with actua
             if chunk.tool_calls:
                 for tool_call in chunk.tool_calls:
                     message = get_tool_message(tool_call.function.name)
-                    yield f"data: {json.dumps({'type': 'progress', 'message': message, 'step': 1, 'total': 3})}\n\n"
+                    yield f"data: {json.dumps({'type': 'progress', 'message': message, 'step': 1, 'total': 4})}\n\n"
             if chunk.content:
                 content = chunk.content
                 analysis_content.append(content)
                 yield f"data: {json.dumps({'type': 'analysis_chunk', 'content': content})}\n\n"
-        
+
         # Combine all streamed content - this is the raw analysis
         raw_analysis = "".join(analysis_content)
-        
+
         if not raw_analysis.strip():
             yield f"data: {json.dumps({'type': 'error', 'error': 'No analysis data was generated. Please try again.'})}\n\n"
             return
@@ -232,59 +331,106 @@ Use x_search to gather posts. Provide a detailed QUALITATIVE analysis with actua
         # STEP 2: STRUCTURED OUTPUT - Format the raw analysis into JSON
         # (Use a separate non-agentic chat with .parse() for guaranteed JSON)
         # =================================================================
-        yield f"data: {json.dumps({'type': 'progress', 'message': '✨ Generating your wrapped...', 'step': 2, 'total': 3})}\n\n"
-        
+        yield f"data: {json.dumps({'type': 'progress', 'message': '✨ Generating your wrapped...', 'step': 2, 'total': 4})}\n\n"
+
         # Create a new chat for structured output (no tools = non-agentic)
         format_chat = client.chat.create(model="grok-3-fast")
-        
-        format_prompt = f"""Based on the following content analysis of @{username}'s X activity for {current_year}, structure the insights into the required JSON format.
+
+        format_prompt = f"""Based on the following content analysis of @{username}'s X activity for {current_year}, create their Year Wrapped.
 
 === RAW ANALYSIS ===
 {raw_analysis}
 === END ANALYSIS ===
 
-Create a complete, engaging Wrapped for this user. Fill ALL fields with meaningful content:
+Create a COMPLETE, ENGAGING Wrapped. This should feel like Spotify Wrapped - surprising, personal, shareable.
 
-PERSONALITY (required):
-- archetype: Pick the best fit from: "The Thread Weaver", "The Hot Take Artist", "The Meme Curator", "The Knowledge Dropper", "The Community Builder", "The Vibe Curator", "The Industry Insider", "The Storyteller"
-- description: 2-3 sentences explaining why this archetype fits them
-- traits: 3-5 personality traits (e.g., "Witty", "Passionate", "Analytical")
-- spirit_emoji: One emoji that captures their energy (🔥, 🧠, 💭, 🎯, etc.)
+=== REQUIRED FIELDS ===
 
-VIBE (required):
-- Sentiment percentages that add to 100 (positive/neutral/negative)
-- overall_vibe: A catchy 1-3 word label (e.g., "Chaotic Good", "Thoughtful Optimist", "Passionate Critic")
-- vibe_description: 2-3 sentences about their emotional energy
+PERSONALITY:
+- archetype: Best fit from: "The Thread Weaver", "The Hot Take Artist", "The Meme Lord", "The Knowledge Dropper", "The Reply Guy/Gal", "The Vibe Curator", "The Industry Oracle", "The Chaos Agent", "The Philosopher", "The Hype Beast"
+- description: 2-3 sentences WHY this fits (with examples)
+- traits: 3-5 personality traits
+- spirit_emoji: One emoji that IS them
 
-THEMES (5-7 required):
-- theme: Short topic name (1-3 words)
-- weight: 1-100 showing relative prominence
-- sample_context: Brief example of how they discuss it
+VIBE:
+- Percentages adding to 100 (positive/neutral/negative)
+- overall_vibe: Catchy label (e.g., "Chaotic Good", "Unhinged Genius", "Wholesome Chaos")
+- vibe_description: 2-3 sentences about their energy
 
-VOICE (required):
-- style_summary: 2-3 sentences about their unique writing voice
-- vocabulary_level, tone, emoji_style, post_length_style, signature_phrases
+THEMES (5-7):
+- theme: Topic name (1-3 words)
+- weight: 1-100 (relative prominence)
+- sample_context: How they discuss it (quote if possible)
 
-CONTENT MIX (required):
-- categories: 4-6 content types with percentages (Hot Takes, Threads, Commentary, Humor, etc.)
-- primary_mode: Their main content style
-- engagement_style: How they interact with others
+VOICE:
+- style_summary: Their unique writing voice
+- vocabulary_level, tone, emoji_style, post_length_style
+- signature_phrases: 2-4 phrases/words they overuse
 
-HIGHLIGHTS (3-5 required):
-- title: Catchy moment title (e.g., "The Thread That Hit Different", "Peak Chaos Energy")
-- description, post_snippet, time_period
+CONTENT MIX:
+- categories: 4-6 types with percentages
+- primary_mode: Main content style
+- engagement_style: How they interact
 
-GREATEST HITS (3-5 required):
-- content: The actual post text
-- category: Why it stands out (e.g., "Funniest Moment", "Hottest Take", "Most Insightful")
+HIGHLIGHTS (3-5):
+- title: Catchy moment title
+- description: What made it notable
+- post_snippet: Quote from that period
+- time_period: When it happened
+
+GREATEST HITS (3-5):
+- content: The actual post text (full quote)
+- category: Why it's a hit
 - context: Brief explanation
 
-YEAR STORY (CRITICAL - required):
-Write a compelling 3-5 sentence narrative summary of their year on X. This should feel personal and insightful, like a friend summarizing their year. Reference specific themes, memorable moments, and their personality. Make it engaging and shareable.
+=== NEW INSIGHT FIELDS (CRITICAL) ===
 
-Example: "2024 was @user's year of finding their voice. From early threads about tech to later hot takes on industry drama, they evolved from observer to thought leader. Their witty commentary and no-holds-barred opinions earned them a dedicated following. Whether dropping knowledge bombs or sparking debates, they never failed to make their presence felt."
+EVOLUTION (required - this is what makes it feel like a "year in review"):
+- early_year_vibe: Their Q1 (Jan-Mar) energy/focus
+- mid_year_shift: How Q2-Q3 was different
+- late_year_energy: Their Q4 vibe
+- transformation_summary: One sentence arc (e.g., "From lurker to thought leader")
 
-DO NOT leave year_story empty or generic. Make it specific to this user's actual content."""
+SURPRISING FACTS (3-5 required):
+Things that are UNEXPECTED or would make someone go "wait, really?"
+- insight: The surprising observation
+- evidence: Example from their posts
+
+HOT TAKE OF YEAR (required):
+Their single spiciest, most controversial, or boldest opinion. Quote the actual post if possible.
+
+ROAST (required):
+A playful, witty roast of their X presence. Should be funny but not mean. Like what their friends would joke about.
+Example: "You've never met a hot take you didn't want to adopt. Your 'quick thought' threads have more parts than a Netflix series."
+
+IF THEY WERE (required):
+Complete this: "If @{username} was a [thing], they'd be..."
+Be creative! Examples:
+- "If @user was a font, they'd be Comic Sans - controversial, but memorable"
+- "If @user was a drink, they'd be cold brew with 4 espresso shots - intense, keeps you up at night"
+
+POWER MOVE (required):
+Their signature move on X. What do they do better than anyone?
+Example: "Turning industry drama into must-read threads" or "Making people actually click the 'read more'"
+
+ONE LINER (required):
+A single shareable sentence that captures their ENTIRE X presence. This should be quotable.
+Example: "The only person who can make a 47-tweet thread feel too short."
+
+YEAR STORY (required):
+3-5 sentence narrative of their year. Personal, specific, shareable. Reference their actual content.
+BAD: "They had a good year posting about things."
+GOOD: "2024 was the year @user stopped lurking and started causing chaos. From their viral January thread about [topic] to their October hot take that broke the timeline, they went from observer to main character. Their takes got hotter, their threads got longer, and their followers couldn't look away."
+
+=== QUALITY CHECK ===
+Before finalizing, verify:
+- Every field references SPECIFIC content from the analysis
+- The roast is actually funny
+- The one_liner is quotable
+- surprising_facts are genuinely surprising
+- Evolution shows actual CHANGE, not just "they posted"
+
+NO GENERIC FILLER. Make every field COUNT."""
 
         format_chat.append(user(format_prompt))
         
@@ -294,7 +440,7 @@ DO NOT leave year_story empty or generic. Make it specific to this user's actual
             wrapped_data = wrapped.model_dump()
         except Exception as parse_error:
             print(f"⚠️ Structured output parsing failed: {parse_error}")
-            # Fallback: Create a response with the raw analysis
+            # Fallback: Create a response with all fields including new ones
             wrapped_data = {
                 "personality": {
                     "archetype": "The Storyteller",
@@ -325,11 +471,29 @@ DO NOT leave year_story empty or generic. Make it specific to this user's actual
                 },
                 "highlights": [],
                 "greatest_hits": [],
-                "year_story": f"@{username}'s {current_year} on X was a journey of authentic expression. Through various topics and conversations, they brought their unique voice to the platform. Their posts reflected a personality that engages, provokes thought, and connects with others in meaningful ways."
+                "year_story": f"@{username}'s {current_year} on X was a journey of authentic expression. Through various topics and conversations, they brought their unique voice to the platform. Their posts reflected a personality that engages, provokes thought, and connects with others in meaningful ways.",
+                # New insight fields with fallbacks
+                "evolution": {
+                    "early_year_vibe": "Started the year finding their footing on the platform.",
+                    "mid_year_shift": "Evolved their voice and explored new topics.",
+                    "late_year_energy": "Ended the year with a clearer sense of their X identity.",
+                    "transformation_summary": "A year of growth and authentic expression."
+                },
+                "surprising_facts": [],
+                "hot_take_of_year": "Their boldest opinions kept followers engaged throughout the year.",
+                "roast": f"@{username} never met a post button they didn't want to click.",
+                "if_they_were": f"If @{username} was a coffee order, they'd be whatever's most interesting on the menu.",
+                "power_move": "Showing up authentically, one post at a time.",
+                "one_liner": f"@{username}: Proof that everyone has a story worth sharing."
             }
-        
+
+        # =================================================================
+        # STEP 3: QUALITY ENHANCEMENT (Optional refinement pass)
+        # =================================================================
+        yield f"data: {json.dumps({'type': 'progress', 'message': '🔥 Adding final touches...', 'step': 3, 'total': 4})}\n\n"
+
         # Progress: complete
-        yield f"data: {json.dumps({'type': 'progress', 'message': '🎉 Done!', 'step': 3, 'total': 3})}\n\n"
+        yield f"data: {json.dumps({'type': 'progress', 'message': '🎉 Done!', 'step': 4, 'total': 4})}\n\n"
         yield f"data: {json.dumps({'type': 'complete', 'data': wrapped_data})}\n\n"
     
     except GeneratorExit:
