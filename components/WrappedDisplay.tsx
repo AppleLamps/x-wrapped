@@ -66,6 +66,18 @@ interface GreatestHit {
   context: string
 }
 
+interface EvolutionArc {
+  early_year_vibe: string
+  mid_year_shift: string
+  late_year_energy: string
+  transformation_summary: string
+}
+
+interface SurprisingInsight {
+  insight: string
+  evidence: string
+}
+
 interface WrappedData {
   personality?: PersonalityArchetype
   vibe?: VibeAnalysis
@@ -75,6 +87,14 @@ interface WrappedData {
   highlights?: HighlightMoment[]
   greatest_hits?: GreatestHit[]
   year_story?: string
+  // New insight fields
+  evolution?: EvolutionArc
+  surprising_facts?: SurprisingInsight[]
+  hot_take_of_year?: string
+  roast?: string
+  if_they_were?: string
+  power_move?: string
+  one_liner?: string
 }
 
 interface WrappedDisplayProps {
@@ -114,11 +134,15 @@ export default function WrappedDisplay({ data, username }: WrappedDisplayProps) 
     'intro',
     'personality',
     'vibe',
+    'evolution',        // NEW: Q1 → Q2 → Q3 → Q4 journey
     'themes',
     'voice',
     'content_mix',
     'highlights',
     'greatest_hits',
+    'surprising',       // NEW: Surprising facts
+    'roast',            // NEW: Roast + fun comparisons
+    'hot_take',         // NEW: Hot take of the year + one-liner
     'summary',
     'outro'
   ]
@@ -701,6 +725,246 @@ export default function WrappedDisplay({ data, username }: WrappedDisplayProps) 
     )
   }
 
+  // NEW SLIDE: Evolution - Q1 → Q2 → Q3 → Q4 journey
+  const EvolutionSlide = () => {
+    const evolution = data.evolution
+
+    const quarters = [
+      { label: 'Q1', title: 'Early Year', content: evolution?.early_year_vibe, color: '#22d3ee' },
+      { label: 'Q2-Q3', title: 'Mid Year', content: evolution?.mid_year_shift, color: '#f59e0b' },
+      { label: 'Q4', title: 'Late Year', content: evolution?.late_year_energy, color: '#ec4899' },
+    ]
+
+    return (
+      <div className="flex flex-col items-center justify-center h-full p-4 md:p-6 overflow-y-auto">
+        <motion.h2
+          initial={{ y: -20, opacity: 0 }}
+          animate={{ y: 0, opacity: 1 }}
+          className="text-3xl md:text-4xl font-bold mb-2 flex items-center gap-3 pt-8"
+        >
+          <span className="text-3xl">📈</span>
+          Your Evolution
+        </motion.h2>
+
+        <motion.p
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={{ delay: 0.1 }}
+          className="text-gray-400 mb-8 text-center text-sm md:text-base"
+        >
+          How you transformed throughout the year
+        </motion.p>
+
+        {/* Timeline */}
+        <div className="w-full max-w-2xl space-y-6 mb-8">
+          {quarters.map((q, idx) => (
+            <motion.div
+              key={idx}
+              initial={{ x: idx % 2 === 0 ? -50 : 50, opacity: 0 }}
+              animate={{ x: 0, opacity: 1 }}
+              transition={{ delay: 0.2 + idx * 0.2 }}
+              className="flex items-start gap-4"
+            >
+              {/* Quarter badge */}
+              <div
+                className="shrink-0 w-16 h-16 rounded-2xl flex flex-col items-center justify-center font-bold"
+                style={{ backgroundColor: `${q.color}20`, color: q.color }}
+              >
+                <span className="text-lg">{q.label}</span>
+              </div>
+
+              {/* Content */}
+              <div className="flex-1 glass-effect p-4 rounded-xl border border-white/5">
+                <p className="text-xs uppercase tracking-wider mb-1" style={{ color: q.color }}>
+                  {q.title}
+                </p>
+                <p className="text-gray-200 text-sm md:text-base leading-relaxed">
+                  {q.content || 'Exploring and growing on the platform.'}
+                </p>
+              </div>
+            </motion.div>
+          ))}
+        </div>
+
+        {/* Transformation summary */}
+        <motion.div
+          initial={{ y: 20, opacity: 0 }}
+          animate={{ y: 0, opacity: 1 }}
+          transition={{ delay: 0.8 }}
+          className="glass-effect p-6 rounded-2xl text-center max-w-xl border border-emerald-500/20 bg-emerald-500/5"
+        >
+          <p className="text-lg md:text-xl text-emerald-300 font-medium">
+            {evolution?.transformation_summary || 'A year of authentic growth and expression.'}
+          </p>
+        </motion.div>
+      </div>
+    )
+  }
+
+  // NEW SLIDE: Surprising Facts
+  const SurprisingSlide = () => {
+    const facts = data.surprising_facts?.slice(0, 4) || []
+
+    return (
+      <div className="flex flex-col items-center h-full p-4 md:p-6 overflow-y-auto">
+        <motion.h2
+          initial={{ y: -20, opacity: 0 }}
+          animate={{ y: 0, opacity: 1 }}
+          className="text-3xl md:text-4xl font-bold mb-2 flex items-center gap-3 pt-8"
+        >
+          <span className="text-3xl">🤯</span>
+          Wait, Really?
+        </motion.h2>
+
+        <motion.p
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={{ delay: 0.1 }}
+          className="text-gray-400 mb-8 text-center text-sm md:text-base"
+        >
+          Things we didn't expect about you
+        </motion.p>
+
+        <div className="space-y-4 w-full max-w-2xl pb-8">
+          {facts.length > 0 ? facts.map((fact, idx) => (
+            <motion.div
+              key={idx}
+              initial={{ scale: 0.9, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              transition={{ delay: 0.2 + idx * 0.15, type: "spring" }}
+              className="glass-effect p-5 rounded-2xl relative overflow-hidden border border-purple-500/20 bg-purple-500/5"
+            >
+              <div className="flex items-start gap-4">
+                <span className="text-2xl">💡</span>
+                <div>
+                  <p className="text-white text-base md:text-lg font-medium mb-2">
+                    {fact.insight}
+                  </p>
+                  {fact.evidence && (
+                    <p className="text-gray-400 text-sm italic">
+                      "{fact.evidence}"
+                    </p>
+                  )}
+                </div>
+              </div>
+            </motion.div>
+          )) : (
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              className="text-center text-gray-400"
+            >
+              <p>You're full of surprises, but we couldn't pin them down!</p>
+            </motion.div>
+          )}
+        </div>
+      </div>
+    )
+  }
+
+  // NEW SLIDE: Roast + Fun Comparisons
+  const RoastSlide = () => {
+    return (
+      <div className="flex flex-col items-center justify-center h-full p-4 md:p-6 overflow-y-auto">
+        <motion.h2
+          initial={{ y: -20, opacity: 0 }}
+          animate={{ y: 0, opacity: 1 }}
+          className="text-3xl md:text-4xl font-bold mb-8 flex items-center gap-3"
+        >
+          <span className="text-3xl">🔥</span>
+          The Roast
+        </motion.h2>
+
+        {/* Main Roast */}
+        <motion.div
+          initial={{ scale: 0.9, opacity: 0 }}
+          animate={{ scale: 1, opacity: 1 }}
+          transition={{ delay: 0.2, type: "spring" }}
+          className="glass-effect p-6 md:p-8 rounded-3xl max-w-2xl text-center mb-8 border border-orange-500/20 bg-orange-500/5"
+        >
+          <p className="text-lg md:text-xl lg:text-2xl text-white leading-relaxed">
+            {data.roast || "You're too perfect to roast. Just kidding, we just couldn't find enough material."}
+          </p>
+        </motion.div>
+
+        {/* If They Were */}
+        {data.if_they_were && (
+          <motion.div
+            initial={{ y: 20, opacity: 0 }}
+            animate={{ y: 0, opacity: 1 }}
+            transition={{ delay: 0.5 }}
+            className="glass-effect p-5 md:p-6 rounded-2xl max-w-xl text-center border border-pink-500/20 bg-pink-500/5"
+          >
+            <p className="text-sm text-pink-400 uppercase tracking-wider mb-2">If you were...</p>
+            <p className="text-base md:text-lg text-gray-200">
+              {data.if_they_were}
+            </p>
+          </motion.div>
+        )}
+
+        {/* Power Move */}
+        {data.power_move && (
+          <motion.div
+            initial={{ y: 20, opacity: 0 }}
+            animate={{ y: 0, opacity: 1 }}
+            transition={{ delay: 0.7 }}
+            className="mt-6 glass-effect p-5 md:p-6 rounded-2xl max-w-xl text-center border border-cyan-500/20 bg-cyan-500/5"
+          >
+            <p className="text-sm text-cyan-400 uppercase tracking-wider mb-2">Your Power Move</p>
+            <p className="text-base md:text-lg text-gray-200">
+              {data.power_move}
+            </p>
+          </motion.div>
+        )}
+      </div>
+    )
+  }
+
+  // NEW SLIDE: Hot Take + One-liner
+  const HotTakeSlide = () => {
+    return (
+      <div className="flex flex-col items-center justify-center h-full p-4 md:p-6">
+        <motion.h2
+          initial={{ y: -20, opacity: 0 }}
+          animate={{ y: 0, opacity: 1 }}
+          className="text-3xl md:text-4xl font-bold mb-8 flex items-center gap-3"
+        >
+          <span className="text-3xl">🌶️</span>
+          Hottest Take
+        </motion.h2>
+
+        {/* Hot Take */}
+        <motion.div
+          initial={{ scale: 0.8, opacity: 0 }}
+          animate={{ scale: 1, opacity: 1 }}
+          transition={{ delay: 0.2, type: "spring" }}
+          className="glass-effect p-6 md:p-8 rounded-3xl max-w-2xl text-center mb-10 border border-red-500/30 bg-gradient-to-br from-red-500/10 to-orange-500/10"
+        >
+          <p className="text-lg md:text-xl lg:text-2xl text-white leading-relaxed font-medium">
+            {data.hot_take_of_year || "Your takes were all perfectly reasonable. Suspiciously reasonable..."}
+          </p>
+        </motion.div>
+
+        {/* One-liner */}
+        <motion.div
+          initial={{ y: 30, opacity: 0 }}
+          animate={{ y: 0, opacity: 1 }}
+          transition={{ delay: 0.6 }}
+          className="text-center max-w-xl"
+        >
+          <p className="text-gray-500 uppercase tracking-widest text-xs mb-3">In One Line</p>
+          <div className="relative">
+            <span className="absolute -left-4 -top-2 text-4xl text-white/10">"</span>
+            <p className="text-xl md:text-2xl lg:text-3xl gradient-text font-bold leading-relaxed">
+              {data.one_liner || `@${username}: Making X a more interesting place, one post at a time.`}
+            </p>
+            <span className="absolute -right-4 bottom-0 text-4xl text-white/10 rotate-180">"</span>
+          </div>
+        </motion.div>
+      </div>
+    )
+  }
+
   const SummarySlide = () => {
     const story = data.year_story
     const hasValidStory = story && story.length > 30 && !story.toLowerCase().includes('unable to generate')
@@ -749,8 +1013,11 @@ export default function WrappedDisplay({ data, username }: WrappedDisplayProps) 
 
   const OutroSlide = () => {
     const handleShare = () => {
-      const shareText = `I'm ${data.personality?.archetype || 'a Storyteller'} ${data.personality?.spirit_emoji || '✨'} on X! Check out my 2025 Wrapped`
-      
+      // Use the one_liner if available, otherwise fall back to archetype
+      const shareText = data.one_liner
+        ? `${data.one_liner}\n\n${data.personality?.spirit_emoji || '✨'} My 2025 X Wrapped`
+        : `I'm ${data.personality?.archetype || 'a Storyteller'} ${data.personality?.spirit_emoji || '✨'} on X! Check out my 2025 Wrapped`
+
       if (navigator.share) {
         navigator.share({
           title: `${username}'s 2025 X Wrapped`,
@@ -832,11 +1099,15 @@ export default function WrappedDisplay({ data, username }: WrappedDisplayProps) 
       case 'intro': return <IntroSlide />
       case 'personality': return <PersonalitySlide />
       case 'vibe': return <VibeSlide />
+      case 'evolution': return <EvolutionSlide />
       case 'themes': return <ThemesSlide />
       case 'voice': return <VoiceSlide />
       case 'content_mix': return <ContentMixSlide />
       case 'highlights': return <HighlightsSlide />
       case 'greatest_hits': return <GreatestHitsSlide />
+      case 'surprising': return <SurprisingSlide />
+      case 'roast': return <RoastSlide />
+      case 'hot_take': return <HotTakeSlide />
       case 'summary': return <SummarySlide />
       case 'outro': return <OutroSlide />
       default: return null
